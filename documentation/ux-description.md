@@ -1,8 +1,10 @@
 # UX Documentation: GymRat
 
+Flutter (Dart) mobile app for iOS and Android.
+
 ## Screen Architecture Overview
 
-### Mobile Screens (iOS Priority)
+### Mobile Screens (Flutter: iOS Priority)
 1. **Authentication Screens**
    - Login Screen
    - Sign Up Screen
@@ -24,8 +26,7 @@
    - Analytics Dashboard
    - Profile/Settings Screen
 
-### Desktop Web Screens
-1. **Routine Setup Wizard**
+4. **Routine Setup Wizard (Mobile)**
    - Diet Configuration Screen
    - Meal Templates Screen
    - Workout Templates Screen
@@ -473,14 +474,14 @@
 
 ---
 
-## Desktop Web Screen Specifications
+## Routine Setup Wizard (Mobile) Specifications
 
 ### 1. Diet Configuration Screen
 **Purpose**: Set up nutrition goals
 
-**Layout**: Two-column form
+**Layout**: Single-column mobile form
 
-**Left Column - Profile**:
+**Profile Section**:
 - Height Input (ft/in or cm)
 - Weight Input (lbs or kg)
 - Age Input
@@ -488,7 +489,7 @@
 - Activity Level Select
 - Goal Radio Buttons
 
-**Right Column - Targets**:
+**Targets Section**:
 - Suggested Values Display
 - "Apply Suggestions" Button
 - Calories Min/Max Inputs
@@ -510,10 +511,10 @@
 ### 2. Meal Templates Screen
 **Purpose**: Create reusable meal templates
 
-**Layout**: Table with inline editing
+**Layout**: Mobile list with inline editing
 
-**Template Table**:
-- Columns: Name | Foods | P | C | F | Cal | Actions
+**Template List**:
+- Rows: Name | Foods summary | P | C | F | Cal | Actions
 - Add Template Row
 - Inline food search
 - Quantity inputs
@@ -533,14 +534,14 @@
 ### 3. Workout Templates Screen
 **Purpose**: Create workout routines
 
-**Layout**: Tab interface with exercise tables
+**Layout**: Tab interface with per-workout lists
 
 **Workout Tabs**:
 - Tab per workout (Push, Pull, Legs, +)
-- Rename on double-click
+- Rename on tap-and-hold
 
-**Exercise Table per Tab**:
-- Columns: Exercise | Sets | Reps | Rest | Actions
+**Exercise List per Tab**:
+- Fields: Exercise | Sets | Reps | Rest | Actions
 - Drag handle for reordering
 - Inline editing
 - Delete button per row
@@ -560,7 +561,7 @@
 ### 4. Daily Tasks Screen
 **Purpose**: Set up recurring tasks
 
-**Layout**: Task grid with day checkboxes
+**Layout**: Task grid with day chips (mobile)
 
 **Task Grid**:
 - Columns: Task Name | Mon | Tue | Wed | Thu | Fri | Sat | Sun | Actions
@@ -582,10 +583,10 @@
 ### 5. Weekly Schedule Screen
 **Purpose**: Assign workouts and tasks to days
 
-**Layout**: Calendar week view
+**Layout**: Mobile calendar week view
 
 **Week Calendar**:
-- Column per day
+- Column per day (scrollable)
 - Workout dropdown per day
 - Task list (from Daily Tasks)
 - Add/remove tasks per day
@@ -618,12 +619,11 @@
 - "Activate Routine" Button (primary)
 
 **Post-Activation**:
-- QR code for app download
 - "Open Dashboard" Button
 
 **Navigation**:
 - Edit → Respective screen
-- Activate → Dashboard or App Download
+- Activate → Dashboard
 
 ---
 
@@ -644,7 +644,7 @@ Home Dashboard → Food Logging → [Search/Scan/Recent] → Add Quantity → Ho
 Home Dashboard → Active Workout → [Set Input → Rest Timer] × N → Workout Summary → Home Dashboard
 ```
 
-### Desktop Setup Flow
+### Routine Setup Flow (Mobile)
 ```
 Login → Setup Routine → Diet Config → Meal Templates → Workout Templates → Daily Tasks → Weekly Schedule → Review → Activate
 ```

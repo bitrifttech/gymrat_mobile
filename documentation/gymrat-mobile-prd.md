@@ -2,6 +2,7 @@
 
 ## Executive Summary
 GymRat is a mobile-first fitness tracking application focused on simplicity and effectiveness. It combines diet tracking with workout logging to help users meet their protein targets, manage calories, and progressively improve their strength training performance.
+Implemented as a Flutter (Dart) mobile application for iOS and Android.
 
 ## Product Vision
 Create the simplest, most efficient fitness tracking app that helps users:
@@ -99,7 +100,7 @@ Display upon app open:
 
 ### 4. Workout Tracking
 
-#### 4.1 Workout Creation (Desktop-optimized)
+#### 4.1 Workout Creation (Mobile-first)
 - Add exercises with:
   - Exercise name
   - Target sets
@@ -185,16 +186,13 @@ Time periods: Daily, Weekly, Monthly, All-time
 
 ### 7. Platform-Specific Features
 
-#### 7.1 Mobile (iOS Priority)
+#### 7.1 Mobile (Flutter: iOS and Android)
 - Optimized for one-handed use
 - Large tap targets for gym use
 - Swipe gestures for quick navigation
 - Number pad for weight/rep entry
 - Barcode scanner using camera
-
-#### 7.2 Desktop Web
-- Keyboard-first navigation
-- Bulk exercise/workout creation
+- Bulk exercise/workout creation (mobile-friendly editors)
 - Meal template management
 - Custom food database management
 - Analytics deep-dive views
@@ -270,13 +268,13 @@ Time periods: Daily, Weekly, Monthly, All-time
 3. **Button changes** to "✓ Meditation" (grayed out)
 4. **Streak updates** if applicable (+1 day)
 
-### Journey 5: Desktop Routine Setup (Initial Configuration)
-**Goal**: Set up entire weekly routine from desktop
-**Target**: Streamlined wizard-style setup with keyboard-first interaction
+### Journey 5: Routine Setup (Mobile, Initial Configuration)
+**Goal**: Set up entire weekly routine from mobile
+**Target**: Streamlined wizard-style setup with tap-first interaction
 
 #### Step 1: Login & Navigate
-1. **Login** to desktop web app
-2. **Click** "Setup Routine" button (prominent on dashboard)
+1. **Open app and log in**
+2. **Tap** "Setup Routine" button (prominent on dashboard)
    - Alternative: Menu → "Routine Setup"
 
 #### Step 2: Diet Configuration
@@ -292,7 +290,7 @@ Time periods: Daily, Weekly, Monthly, All-time
      - Carbs: Target [250g]
      - Fats: Target [70g]
    - "Use Suggestions" button to reset to calculated values
-3. **Click** "Save & Continue" or press Tab+Enter
+3. **Tap** "Save & Continue"
 
 #### Step 3: Meal Templates Setup
 1. **Quick Add Common Meals**:
@@ -305,10 +303,10 @@ Time periods: Daily, Weekly, Monthly, All-time
      Protein Shake   | [+ Add Food]                | Auto-calculated
      ```
 2. **Adding foods to template**:
-   - Click "Add Food" → Search modal appears
+   - Tap "Add Food" → Search modal appears
    - Type to search → Select food → Enter quantity
-   - Press Enter to add another food
-   - ESC to close and save
+   - Tap "Add Another" to add another food
+   - Tap "Done" to close and save
 3. **Bulk actions**:
    - "Import Common Templates" button for preset meals
    - "Copy Template" to duplicate and modify
@@ -331,7 +329,7 @@ Time periods: Daily, Weekly, Monthly, All-time
    [+ Add Exercise]
    ```
 3. **Quick entry mode**:
-   - Type exercise name → Tab → Enter sets → Tab → Enter reps → Tab → Enter rest → Enter (adds new row)
+   - Type exercise name → Next → Enter sets → Next → Enter reps → Next → Enter rest → Add Row
    - Drag handles to reorder exercises
 4. **Template options**:
    - "Duplicate Workout" to create variations
@@ -372,14 +370,14 @@ Time periods: Daily, Weekly, Monthly, All-time
                      ✓ Stretching     ✓ Stretching
    ```
 2. **Workout Assignment**:
-   - Click "Change" dropdown → Select from workout templates
-   - Or drag workout templates from sidebar to days
+   - Tap "Change" dropdown → Select from workout templates
+   - Or drag workout templates from a mobile drawer to days
    - "Copy Week" button to duplicate weekly schedule
 3. **Tasks auto-populate** based on Step 5 selections
 4. **Quick adjustments**:
    - Toggle individual tasks on/off for specific days
    - "Add One-time Task" for specific day
-5. **Click** "Save & Continue"
+5. **Tap** "Save & Continue"
 
 #### Step 7: Review & Activate
 1. **Complete Routine Summary**:
@@ -392,17 +390,15 @@ Time periods: Daily, Weekly, Monthly, All-time
    - "Save as Draft" to finish later
    - "Activate Routine" to start using immediately
 3. **Post-activation**:
-   - "Download iOS App" button (if on desktop)
    - "View Today's Plan" to see immediate tasks
-   - QR code for quick mobile app download
 
 #### Alternative: Quick Setup Mode
 **For experienced users** - Single page view:
 1. **All sections visible** in accordion layout
-2. **Keyboard shortcuts**:
-   - Cmd/Ctrl + 1-7 to jump between sections
-   - Tab/Shift+Tab for navigation
-   - Enter to save section
+2. **Quick actions**:
+   - Tap section headers to jump between sections
+   - Swipe/scroll for navigation
+   - Tap to save section
 3. **Import/Export**:
    - "Import Routine" from JSON/CSV
    - "Export Routine" for backup or sharing
@@ -428,17 +424,13 @@ Time periods: Daily, Weekly, Monthly, All-time
 - Integration with food database API
 - Real-time sync between devices
 
-### Mobile (iOS)
-- Swift/SwiftUI
-- Core Data for local storage
-- HealthKit integration (future)
-- Camera API for barcode scanning
-
-### Web
-- Responsive React application
-- Keyboard navigation support
-- Desktop-optimized layouts for data entry
-- Drag-and-drop for schedule building
+### Mobile (Flutter)
+- Flutter (Dart) cross-platform (iOS and Android)
+- Local storage: SQLite (sqflite) or Hive
+- Camera and barcode scanning via Flutter plugins
+- Haptic feedback and vibration support
+- Drag-and-drop style interactions for schedule building
+- HealthKit/Google Fit integration (future)
 
 ## Success Metrics
 - Daily active users
@@ -459,7 +451,7 @@ Time periods: Daily, Weekly, Monthly, All-time
 - Workout creation and logging
 - Home dashboard
 - Basic analytics (weekly view)
-- Desktop routine setup wizard
+- Mobile routine setup wizard
 
 ### Phase 2 (Post-launch)
 - Meal templates
@@ -470,7 +462,6 @@ Time periods: Daily, Weekly, Monthly, All-time
 - Body weight/fat percentage tracking
 
 ### Phase 3 (Future)
-- Android app
 - Community workout templates
 - Advanced analytics
 - HealthKit/Google Fit integration
