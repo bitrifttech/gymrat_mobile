@@ -41,6 +41,9 @@ dependencies:
   path_provider: ^2.1.5
   flutter_secure_storage: ^9.2.4
   dio: ^5.9.0
+  build_runner: ^2.7.0
+  drift_dev: ^2.28.1
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
