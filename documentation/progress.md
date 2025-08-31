@@ -19,5 +19,17 @@
 - Ran code generation (build_runner) and analyzer; project is clean.
 
 ## Next
-- Verify app boots with new router shell on iOS simulator.
-- Start Milestone 1: Onboarding (User Profile + Goals) with persistence in SQLite.
+- Milestone 1 completed: Onboarding + Profile/Goals settings.
+
+## Milestone 1 (Onboarding + Profile/Goals)
+- Drift schema: added `users` and `goals` tables; ACID transactions for saves.
+- Onboarding flow (3 steps):
+  - Profile: age, height, weight, Sex (Male/Female), activity level, units (Metric/Imperial) with live label changes.
+  - Goal: bulk/cut/maintain.
+  - Macros: user-editable fields; "Use Suggestions" fills from heuristic, never overwrites user edits unless pressed.
+- Units preference: persisted in `settings` and respected across onboarding and edit screens; height/weight converted to metric for storage.
+- Home: displays saved calorie range and macro targets from SQLite.
+- Edit Profile & Goals screen:
+  - Full form with validation, Sex (no "Other"), units toggle (persists immediately), and Save.
+  - Reset button: clears users/goals/settings and routes back to onboarding.
+- Analyzer: clean; build verified on iOS simulator.

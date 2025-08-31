@@ -14,7 +14,30 @@ class Settings extends Table {
   TextColumn get value => text()();
 }
 
-@DriftDatabase(tables: [Settings])
+class Users extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().nullable()();
+  TextColumn get email => text().nullable()();
+  IntColumn get ageYears => integer().nullable()();
+  IntColumn get heightCm => integer().nullable()();
+  RealColumn get weightKg => real().nullable()();
+  TextColumn get gender => text().nullable()();
+  TextColumn get activityLevel => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class Goals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  IntColumn get caloriesMin => integer()();
+  IntColumn get caloriesMax => integer()();
+  IntColumn get proteinG => integer()();
+  IntColumn get carbsG => integer()();
+  IntColumn get fatsG => integer()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [Settings, Users, Goals])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -33,6 +56,12 @@ class AppDatabase extends _$AppDatabase {
   Future<String?> readSetting(String key) async {
     final existing = await (select(settings)..where((tbl) => tbl.key.equals(key))).getSingleOrNull();
     return existing?.value;
+  }
+
+  Future<bool> hasAnyUser() async {
+    final countExp = users.id.count();
+    final row = await (selectOnly(users)..addColumns([countExp])).map((r) => r.read(countExp)).getSingle();
+    return (row ?? 0) > 0;
   }
 }
 
