@@ -432,6 +432,36 @@ Time periods: Daily, Weekly, Monthly, All-time
 - Drag-and-drop style interactions for schedule building
 - HealthKit/Google Fit integration (future)
 
+### Local Data Storage (SQLite)
+- Engine: SQLite with Drift ORM (typed queries, schema generation, migrations)
+- Core tables:
+  - users (profile)
+  - goals (calorie/macro targets; historical)
+  - foods (custom foods), food_brands
+  - meals, meal_items (foods within meals)
+  - workouts, workout_exercises, workout_sets
+  - exercises (user exercise library)
+  - tasks, task_occurrences (daily habits/streaks)
+  - body_metrics (weight, body fat %)
+  - sync_queue (pending mutations for backend sync)
+- Keys and indices:
+  - Foreign keys with ON DELETE CASCADE where appropriate
+  - Unique constraints (e.g., exercise name per user)
+  - Composite indices for analytics queries (date, exercise_id), (date, macro_type)
+- Migrations:
+  - Versioned Drift migrations; backward-compatible and data-preserving
+- Performance:
+  - Indices on date columns for timeline queries
+  - Covering indices on frequent filters (user_id, date range)
+- Security:
+  - Optional at-rest encryption via SQLCipher; key stored via flutter_secure_storage
+- Storage locations:
+  - Database in Application Support directory
+  - Exports (CSV/PDF) in Documents; transient data in Cache
+- Export/backup:
+  - CSV/PDF generated from SQLite views
+  - Optional JSON/SQL export for backup/restore
+
 ## Success Metrics
 - Daily active users
 - Workout completion rate
