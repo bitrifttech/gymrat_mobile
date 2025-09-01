@@ -41,3 +41,10 @@
 - Today section: placeholders for tasks and workout.
 - Visual tweaks: visible ring background track and primary color.
 - Analyzer: clean; verified on iOS simulator.
+
+## Milestone 3 (Food Logging: Manual + Recent)
+- Schema & Migration: Added `foods`, `meals`, `meal_items` (schema v2), with FKs and cascade deletes.
+- Repository: `FoodRepository` for creating foods, adding to meals, listing recent foods, streaming today's totals and per-meal subtotals.
+- UI: `FoodLogScreen` with meal selector, manual entry form (name/brand/serving/calories/protein/carbs/fats + quantity/unit), recent foods list (shows kcal + P/C/F) with quantity/unit prompt, and per-meal subtotals.
+- Home integration: rings now reflect live totals from today's logged meals.
+- Analyzer: clean; verified on iOS simulator.
