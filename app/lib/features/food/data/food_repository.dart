@@ -94,6 +94,15 @@ class FoodRepository {
     String? unit,
   }) async {
     final mealId = await _ensureMealFor(DateTime.now(), mealType);
+    await addExistingFoodToSpecificMeal(mealId: mealId, foodId: foodId, quantity: quantity, unit: unit);
+  }
+
+  Future<void> addExistingFoodToSpecificMeal({
+    required int mealId,
+    required int foodId,
+    double quantity = 1.0,
+    String? unit,
+  }) async {
     final food = await (_db.select(_db.foods)..where((f) => f.id.equals(foodId))).getSingle();
 
     int calories = (food.calories * quantity).round();
@@ -213,6 +222,48 @@ class FoodRepository {
       }).toList();
     });
   }
+
+  Stream<List<(Meal, List<(MealItem, Food)>)>> watchMealsForDay(DateTime date) {
+    final day = _dateOnly(date);
+    // We watch meals for the day and join with items + foods via a manual query per meal for simplicity.
+    final mealsStream = (_db.select(_db.meals)..where((m) => m.date.equals(day))).watch();
+    return mealsStream.asyncMap((meals) async {
+      final result = <(Meal, List<(MealItem, Food)>)>[];
+      for (final meal in meals) {
+        final items = await (_db.select(_db.mealItems)
+              ..where((i) => i.mealId.equals(meal.id)))
+            .get();
+        final pairs = <(MealItem, Food)>[];
+        for (final item in items) {
+          final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
+          pairs.add((item, food));
+        }
+        result.add((meal, pairs));
+      }
+      return result;
+    });
+  }
+
+  Future<void> updateItemQuantity({required int itemId, required double quantity}) async {
+    // Recompute macros proportionally from original food values
+    final item = await (_db.select(_db.mealItems)..where((i) => i.id.equals(itemId))).getSingle();
+    final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
+    final newCalories = (food.calories * quantity).round();
+    final newProtein = (food.proteinG * quantity).round();
+    final newCarbs = (food.carbsG * quantity).round();
+    final newFats = (food.fatsG * quantity).round();
+    await (_db.update(_db.mealItems)..where((i) => i.id.equals(itemId))).write(MealItemsCompanion(
+      quantity: Value(quantity),
+      calories: Value(newCalories),
+      proteinG: Value(newProtein),
+      carbsG: Value(newCarbs),
+      fatsG: Value(newFats),
+    ));
+  }
+
+  Future<void> deleteMealItem(int itemId) async {
+    await (_db.delete(_db.mealItems)..where((i) => i.id.equals(itemId))).go();
+  }
 }
 
 final foodRepositoryProvider = Provider<FoodRepository>((ref) {
@@ -230,4 +281,9 @@ final recentFoodsProvider = FutureProvider.autoDispose<List<Food>>((ref) async {
 
 final todayPerMealTotalsProvider = StreamProvider<List<MealTotals>>((ref) {
   return ref.read(foodRepositoryProvider).watchTodayPerMealTotals();
+});
+
+final todaysMealsProvider = StreamProvider.autoDispose<List<(Meal, List<(MealItem, Food)>)>>((ref) {
+  final repo = ref.read(foodRepositoryProvider);
+  return repo.watchMealsForDay(DateTime.now());
 });
