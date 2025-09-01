@@ -4905,12 +4905,49 @@ class $TemplateExercisesTable extends TemplateExercises
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _setsCountMeta = const VerificationMeta(
+    'setsCount',
+  );
+  @override
+  late final GeneratedColumn<int> setsCount = GeneratedColumn<int>(
+    'sets_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
+  static const VerificationMeta _repsMinMeta = const VerificationMeta(
+    'repsMin',
+  );
+  @override
+  late final GeneratedColumn<int> repsMin = GeneratedColumn<int>(
+    'reps_min',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repsMaxMeta = const VerificationMeta(
+    'repsMax',
+  );
+  @override
+  late final GeneratedColumn<int> repsMax = GeneratedColumn<int>(
+    'reps_max',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     templateId,
     exerciseName,
     orderIndex,
+    setsCount,
+    repsMin,
+    repsMax,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4952,6 +4989,24 @@ class $TemplateExercisesTable extends TemplateExercises
         orderIndex.isAcceptableOrUnknown(data['order_index']!, _orderIndexMeta),
       );
     }
+    if (data.containsKey('sets_count')) {
+      context.handle(
+        _setsCountMeta,
+        setsCount.isAcceptableOrUnknown(data['sets_count']!, _setsCountMeta),
+      );
+    }
+    if (data.containsKey('reps_min')) {
+      context.handle(
+        _repsMinMeta,
+        repsMin.isAcceptableOrUnknown(data['reps_min']!, _repsMinMeta),
+      );
+    }
+    if (data.containsKey('reps_max')) {
+      context.handle(
+        _repsMaxMeta,
+        repsMax.isAcceptableOrUnknown(data['reps_max']!, _repsMaxMeta),
+      );
+    }
     return context;
   }
 
@@ -4977,6 +5032,18 @@ class $TemplateExercisesTable extends TemplateExercises
         DriftSqlType.int,
         data['${effectivePrefix}order_index'],
       )!,
+      setsCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sets_count'],
+      )!,
+      repsMin: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reps_min'],
+      ),
+      repsMax: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reps_max'],
+      ),
     );
   }
 
@@ -4992,11 +5059,17 @@ class TemplateExercise extends DataClass
   final int templateId;
   final String exerciseName;
   final int orderIndex;
+  final int setsCount;
+  final int? repsMin;
+  final int? repsMax;
   const TemplateExercise({
     required this.id,
     required this.templateId,
     required this.exerciseName,
     required this.orderIndex,
+    required this.setsCount,
+    this.repsMin,
+    this.repsMax,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5005,6 +5078,13 @@ class TemplateExercise extends DataClass
     map['template_id'] = Variable<int>(templateId);
     map['exercise_name'] = Variable<String>(exerciseName);
     map['order_index'] = Variable<int>(orderIndex);
+    map['sets_count'] = Variable<int>(setsCount);
+    if (!nullToAbsent || repsMin != null) {
+      map['reps_min'] = Variable<int>(repsMin);
+    }
+    if (!nullToAbsent || repsMax != null) {
+      map['reps_max'] = Variable<int>(repsMax);
+    }
     return map;
   }
 
@@ -5014,6 +5094,13 @@ class TemplateExercise extends DataClass
       templateId: Value(templateId),
       exerciseName: Value(exerciseName),
       orderIndex: Value(orderIndex),
+      setsCount: Value(setsCount),
+      repsMin: repsMin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repsMin),
+      repsMax: repsMax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repsMax),
     );
   }
 
@@ -5027,6 +5114,9 @@ class TemplateExercise extends DataClass
       templateId: serializer.fromJson<int>(json['templateId']),
       exerciseName: serializer.fromJson<String>(json['exerciseName']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
+      setsCount: serializer.fromJson<int>(json['setsCount']),
+      repsMin: serializer.fromJson<int?>(json['repsMin']),
+      repsMax: serializer.fromJson<int?>(json['repsMax']),
     );
   }
   @override
@@ -5037,6 +5127,9 @@ class TemplateExercise extends DataClass
       'templateId': serializer.toJson<int>(templateId),
       'exerciseName': serializer.toJson<String>(exerciseName),
       'orderIndex': serializer.toJson<int>(orderIndex),
+      'setsCount': serializer.toJson<int>(setsCount),
+      'repsMin': serializer.toJson<int?>(repsMin),
+      'repsMax': serializer.toJson<int?>(repsMax),
     };
   }
 
@@ -5045,11 +5138,17 @@ class TemplateExercise extends DataClass
     int? templateId,
     String? exerciseName,
     int? orderIndex,
+    int? setsCount,
+    Value<int?> repsMin = const Value.absent(),
+    Value<int?> repsMax = const Value.absent(),
   }) => TemplateExercise(
     id: id ?? this.id,
     templateId: templateId ?? this.templateId,
     exerciseName: exerciseName ?? this.exerciseName,
     orderIndex: orderIndex ?? this.orderIndex,
+    setsCount: setsCount ?? this.setsCount,
+    repsMin: repsMin.present ? repsMin.value : this.repsMin,
+    repsMax: repsMax.present ? repsMax.value : this.repsMax,
   );
   TemplateExercise copyWithCompanion(TemplateExercisesCompanion data) {
     return TemplateExercise(
@@ -5063,6 +5162,9 @@ class TemplateExercise extends DataClass
       orderIndex: data.orderIndex.present
           ? data.orderIndex.value
           : this.orderIndex,
+      setsCount: data.setsCount.present ? data.setsCount.value : this.setsCount,
+      repsMin: data.repsMin.present ? data.repsMin.value : this.repsMin,
+      repsMax: data.repsMax.present ? data.repsMax.value : this.repsMax,
     );
   }
 
@@ -5072,13 +5174,24 @@ class TemplateExercise extends DataClass
           ..write('id: $id, ')
           ..write('templateId: $templateId, ')
           ..write('exerciseName: $exerciseName, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('setsCount: $setsCount, ')
+          ..write('repsMin: $repsMin, ')
+          ..write('repsMax: $repsMax')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, templateId, exerciseName, orderIndex);
+  int get hashCode => Object.hash(
+    id,
+    templateId,
+    exerciseName,
+    orderIndex,
+    setsCount,
+    repsMin,
+    repsMax,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5086,7 +5199,10 @@ class TemplateExercise extends DataClass
           other.id == this.id &&
           other.templateId == this.templateId &&
           other.exerciseName == this.exerciseName &&
-          other.orderIndex == this.orderIndex);
+          other.orderIndex == this.orderIndex &&
+          other.setsCount == this.setsCount &&
+          other.repsMin == this.repsMin &&
+          other.repsMax == this.repsMax);
 }
 
 class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
@@ -5094,17 +5210,26 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
   final Value<int> templateId;
   final Value<String> exerciseName;
   final Value<int> orderIndex;
+  final Value<int> setsCount;
+  final Value<int?> repsMin;
+  final Value<int?> repsMax;
   const TemplateExercisesCompanion({
     this.id = const Value.absent(),
     this.templateId = const Value.absent(),
     this.exerciseName = const Value.absent(),
     this.orderIndex = const Value.absent(),
+    this.setsCount = const Value.absent(),
+    this.repsMin = const Value.absent(),
+    this.repsMax = const Value.absent(),
   });
   TemplateExercisesCompanion.insert({
     this.id = const Value.absent(),
     required int templateId,
     required String exerciseName,
     this.orderIndex = const Value.absent(),
+    this.setsCount = const Value.absent(),
+    this.repsMin = const Value.absent(),
+    this.repsMax = const Value.absent(),
   }) : templateId = Value(templateId),
        exerciseName = Value(exerciseName);
   static Insertable<TemplateExercise> custom({
@@ -5112,12 +5237,18 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Expression<int>? templateId,
     Expression<String>? exerciseName,
     Expression<int>? orderIndex,
+    Expression<int>? setsCount,
+    Expression<int>? repsMin,
+    Expression<int>? repsMax,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (templateId != null) 'template_id': templateId,
       if (exerciseName != null) 'exercise_name': exerciseName,
       if (orderIndex != null) 'order_index': orderIndex,
+      if (setsCount != null) 'sets_count': setsCount,
+      if (repsMin != null) 'reps_min': repsMin,
+      if (repsMax != null) 'reps_max': repsMax,
     });
   }
 
@@ -5126,12 +5257,18 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Value<int>? templateId,
     Value<String>? exerciseName,
     Value<int>? orderIndex,
+    Value<int>? setsCount,
+    Value<int?>? repsMin,
+    Value<int?>? repsMax,
   }) {
     return TemplateExercisesCompanion(
       id: id ?? this.id,
       templateId: templateId ?? this.templateId,
       exerciseName: exerciseName ?? this.exerciseName,
       orderIndex: orderIndex ?? this.orderIndex,
+      setsCount: setsCount ?? this.setsCount,
+      repsMin: repsMin ?? this.repsMin,
+      repsMax: repsMax ?? this.repsMax,
     );
   }
 
@@ -5150,6 +5287,15 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
     }
+    if (setsCount.present) {
+      map['sets_count'] = Variable<int>(setsCount.value);
+    }
+    if (repsMin.present) {
+      map['reps_min'] = Variable<int>(repsMin.value);
+    }
+    if (repsMax.present) {
+      map['reps_max'] = Variable<int>(repsMax.value);
+    }
     return map;
   }
 
@@ -5159,7 +5305,10 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
           ..write('id: $id, ')
           ..write('templateId: $templateId, ')
           ..write('exerciseName: $exerciseName, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('setsCount: $setsCount, ')
+          ..write('repsMin: $repsMin, ')
+          ..write('repsMax: $repsMax')
           ..write(')'))
         .toString();
   }
@@ -10926,6 +11075,9 @@ typedef $$TemplateExercisesTableCreateCompanionBuilder =
       required int templateId,
       required String exerciseName,
       Value<int> orderIndex,
+      Value<int> setsCount,
+      Value<int?> repsMin,
+      Value<int?> repsMax,
     });
 typedef $$TemplateExercisesTableUpdateCompanionBuilder =
     TemplateExercisesCompanion Function({
@@ -10933,6 +11085,9 @@ typedef $$TemplateExercisesTableUpdateCompanionBuilder =
       Value<int> templateId,
       Value<String> exerciseName,
       Value<int> orderIndex,
+      Value<int> setsCount,
+      Value<int?> repsMin,
+      Value<int?> repsMax,
     });
 
 final class $$TemplateExercisesTableReferences
@@ -10995,6 +11150,21 @@ class $$TemplateExercisesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get setsCount => $composableBuilder(
+    column: $table.setsCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repsMin => $composableBuilder(
+    column: $table.repsMin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repsMax => $composableBuilder(
+    column: $table.repsMax,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$WorkoutTemplatesTableFilterComposer get templateId {
     final $$WorkoutTemplatesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -11043,6 +11213,21 @@ class $$TemplateExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get setsCount => $composableBuilder(
+    column: $table.setsCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repsMin => $composableBuilder(
+    column: $table.repsMin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repsMax => $composableBuilder(
+    column: $table.repsMax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$WorkoutTemplatesTableOrderingComposer get templateId {
     final $$WorkoutTemplatesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11088,6 +11273,15 @@ class $$TemplateExercisesTableAnnotationComposer
     column: $table.orderIndex,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get setsCount =>
+      $composableBuilder(column: $table.setsCount, builder: (column) => column);
+
+  GeneratedColumn<int> get repsMin =>
+      $composableBuilder(column: $table.repsMin, builder: (column) => column);
+
+  GeneratedColumn<int> get repsMax =>
+      $composableBuilder(column: $table.repsMax, builder: (column) => column);
 
   $$WorkoutTemplatesTableAnnotationComposer get templateId {
     final $$WorkoutTemplatesTableAnnotationComposer composer = $composerBuilder(
@@ -11150,11 +11344,17 @@ class $$TemplateExercisesTableTableManager
                 Value<int> templateId = const Value.absent(),
                 Value<String> exerciseName = const Value.absent(),
                 Value<int> orderIndex = const Value.absent(),
+                Value<int> setsCount = const Value.absent(),
+                Value<int?> repsMin = const Value.absent(),
+                Value<int?> repsMax = const Value.absent(),
               }) => TemplateExercisesCompanion(
                 id: id,
                 templateId: templateId,
                 exerciseName: exerciseName,
                 orderIndex: orderIndex,
+                setsCount: setsCount,
+                repsMin: repsMin,
+                repsMax: repsMax,
               ),
           createCompanionCallback:
               ({
@@ -11162,11 +11362,17 @@ class $$TemplateExercisesTableTableManager
                 required int templateId,
                 required String exerciseName,
                 Value<int> orderIndex = const Value.absent(),
+                Value<int> setsCount = const Value.absent(),
+                Value<int?> repsMin = const Value.absent(),
+                Value<int?> repsMax = const Value.absent(),
               }) => TemplateExercisesCompanion.insert(
                 id: id,
                 templateId: templateId,
                 exerciseName: exerciseName,
                 orderIndex: orderIndex,
+                setsCount: setsCount,
+                repsMin: repsMin,
+                repsMax: repsMax,
               ),
           withReferenceMapper: (p0) => p0
               .map(

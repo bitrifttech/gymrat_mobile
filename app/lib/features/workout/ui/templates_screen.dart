@@ -133,10 +133,64 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                               itemCount: list.length,
                               itemBuilder: (ctx, i) {
                                 final te = list[i];
-                                return ListTile(
-                                  leading: const Icon(Icons.fitness_center),
-                                  title: Text(te.exerciseName),
-                                  trailing: Text('#${te.orderIndex}'),
+                                final setsCtrl = TextEditingController(text: te.setsCount.toString());
+                                final repsMinCtrl = TextEditingController(text: te.repsMin?.toString() ?? '');
+                                final repsMaxCtrl = TextEditingController(text: te.repsMax?.toString() ?? '');
+                                return Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(te.exerciseName, style: Theme.of(context).textTheme.titleSmall),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                controller: setsCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(labelText: 'Sets'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: repsMinCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(labelText: 'Reps min'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: repsMaxCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(labelText: 'Reps max'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                final sets = int.tryParse(setsCtrl.text) ?? 3;
+                                                final rmin = repsMinCtrl.text.trim().isEmpty ? null : int.tryParse(repsMinCtrl.text.trim());
+                                                final rmax = repsMaxCtrl.text.trim().isEmpty ? null : int.tryParse(repsMaxCtrl.text.trim());
+                                                await ref.read(workoutRepositoryProvider).updateTemplateExerciseTargets(
+                                                      templateExerciseId: te.id,
+                                                      setsCount: sets,
+                                                      repsMin: rmin,
+                                                      repsMax: rmax,
+                                                    );
+                                                if (!ctx.mounted) return;
+                                                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Saved')));
+                                              },
+                                              child: const Text('Save'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 );
                               },
                             );
@@ -158,6 +212,7 @@ class ScheduleScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final templates = ref.watch(templatesProvider);
+    final schedule = ref.watch(scheduleProvider);
     final days = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return Scaffold(
@@ -165,28 +220,36 @@ class ScheduleScreen extends ConsumerWidget {
       body: templates.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
-        data: (list) {
-          if (list.isEmpty) return const Center(child: Text('Create a template first'));
-          return ListView.builder(
-            itemCount: days.length,
-            itemBuilder: (ctx, i) {
-              final dayIndex = i + 1; // 1..7
-              int? selectedTemplateId;
-              return ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: Text(days[i]),
-                trailing: DropdownButton<int>(
-                  value: selectedTemplateId,
-                  hint: const Text('Select template'),
-                  items: [
-                    for (final t in list) DropdownMenuItem(value: t.id, child: Text(t.name)),
-                  ],
-                  onChanged: (v) async {
-                    if (v == null) return;
-                    await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: dayIndex, templateId: v);
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Saved')));
-                  },
-                ),
+        data: (templateList) {
+          if (templateList.isEmpty) return const Center(child: Text('Create a template first'));
+          return schedule.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error: $e')),
+            data: (schedList) {
+              final dayToTemplateId = {for (final s in schedList) s.dayOfWeek: s.templateId};
+              return ListView.builder(
+                itemCount: days.length,
+                itemBuilder: (ctx, i) {
+                  final dayIndex = i + 1; // 1..7
+                  final current = dayToTemplateId[dayIndex];
+                  return ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(days[i]),
+                    trailing: DropdownButton<int>(
+                      value: current,
+                      hint: const Text('Select template'),
+                      items: [
+                        for (final t in templateList) DropdownMenuItem(value: t.id, child: Text(t.name)),
+                      ],
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: dayIndex, templateId: v);
+                        if (!ctx.mounted) return;
+                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Saved')));
+                      },
+                    ),
+                  );
+                },
               );
             },
           );

@@ -125,6 +125,9 @@ class TemplateExercises extends Table {
   IntColumn get templateId => integer().customConstraint('NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE')();
   TextColumn get exerciseName => text()();
   IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+  IntColumn get setsCount => integer().withDefault(const Constant(3))();
+  IntColumn get repsMin => integer().nullable()();
+  IntColumn get repsMax => integer().nullable()();
 }
 
 class WorkoutSchedule extends Table {
@@ -155,7 +158,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -187,6 +190,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(templateExercises);
             await m.createTable(workoutSchedule);
             await m.addColumn(workouts, workouts.sourceTemplateId);
+          }
+          if (from < 6) {
+            await m.addColumn(templateExercises, templateExercises.setsCount);
+            await m.addColumn(templateExercises, templateExercises.repsMin);
+            await m.addColumn(templateExercises, templateExercises.repsMax);
           }
         },
       );

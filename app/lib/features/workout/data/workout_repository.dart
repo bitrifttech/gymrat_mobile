@@ -138,6 +138,21 @@ class WorkoutRepository {
     ));
   }
 
+  Future<void> updateTemplateExerciseTargets({
+    required int templateExerciseId,
+    required int setsCount,
+    int? repsMin,
+    int? repsMax,
+  }) async {
+    await (_db.update(_db.templateExercises)..where((te) => te.id.equals(templateExerciseId))).write(
+      TemplateExercisesCompanion(
+        setsCount: Value(setsCount),
+        repsMin: Value(repsMin),
+        repsMax: Value(repsMax),
+      ),
+    );
+  }
+
   Stream<List<WorkoutTemplate>> watchTemplates() {
     final userIdFuture = _getCurrentUserId();
     return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
@@ -173,19 +188,30 @@ class WorkoutRepository {
     }
   }
 
+  Stream<List<WorkoutScheduleData>> watchSchedule() {
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      return (_db.select(_db.workoutSchedule)
+            ..where((s) => s.userId.equals(userId))
+            ..orderBy([(s) => OrderingTerm.asc(s.dayOfWeek)]))
+          .watch();
+    });
+  }
+
   Stream<WorkoutTemplate?> watchScheduledTemplateForDate(DateTime date) {
     final day = date.weekday; // 1..7
     final userIdFuture = _getCurrentUserId();
-    return Stream.fromFuture(userIdFuture).asyncExpand((userId) async* {
-      final sched = await (_db.select(_db.workoutSchedule)
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      final schedStream = (_db.select(_db.workoutSchedule)
             ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(day))
             ..limit(1))
-          .getSingleOrNull();
-      if (sched == null) {
-        yield null;
-      } else {
-        yield* (_db.select(_db.workoutTemplates)..where((t) => t.id.equals(sched.templateId))).watchSingle();
-      }
+          .watchSingleOrNull();
+      return schedStream.asyncExpand((sched) {
+        if (sched == null) {
+          return Stream<WorkoutTemplate?>.value(null);
+        }
+        return (_db.select(_db.workoutTemplates)..where((t) => t.id.equals(sched.templateId))).watchSingle().map((t) => t);
+      });
     });
   }
 
@@ -197,7 +223,6 @@ class WorkoutRepository {
       readsFrom: {_db.workouts},
     ).get();
     if (rows.isEmpty) return null;
-    // Filter by date (started today)
     for (final r in rows) {
       final w = _db.workouts.map(r.data);
       final started = _dateOnly(w.startedAt);
@@ -266,4 +291,8 @@ final templateExercisesProvider = StreamProvider.family<List<TemplateExercise>, 
 
 final scheduledTemplateTodayProvider = StreamProvider<WorkoutTemplate?>((ref) {
   return ref.read(workoutRepositoryProvider).watchScheduledTemplateForDate(DateTime.now());
+});
+
+final scheduleProvider = StreamProvider<List<WorkoutScheduleData>>((ref) {
+  return ref.read(workoutRepositoryProvider).watchSchedule();
 });

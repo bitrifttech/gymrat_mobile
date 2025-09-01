@@ -22,6 +22,11 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     super.dispose();
   }
 
+  String _targetLabelFor(String exerciseName) {
+    // In a future iteration, this could join via template mapping. For now, we show label only if a template exists with matching name in current workout's source.
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final active = ref.watch(activeWorkoutProvider);
@@ -100,7 +105,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                         Card(
                           child: ExpansionTile(
                             title: Text(ex.name),
-                            subtitle: Text('Sets'),
+                            subtitle: Text(_targetLabelFor(ex.name)),
                             children: [
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),

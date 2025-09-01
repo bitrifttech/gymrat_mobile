@@ -14,6 +14,7 @@ class HomeScreen extends ConsumerWidget {
     final latestGoal = ref.watch(latestGoalProvider);
     final todayTotals = ref.watch(todayTotalsProvider);
     final scheduledTemplate = ref.watch(scheduledTemplateTodayProvider);
+    final activeWorkout = ref.watch(activeWorkoutProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('GymRat'),
@@ -87,27 +88,43 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Text('Today’s Tasks', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              scheduledTemplate.when(
+              activeWorkout.when(
                 loading: () => const SizedBox.shrink(),
                 error: (e, st) => const SizedBox.shrink(),
-                data: (tpl) {
-                  if (tpl == null) {
-                    return const ListTile(
-                      leading: Icon(Icons.event_busy),
-                      title: Text('No workout scheduled today'),
+                data: (wk) {
+                  if (wk != null) {
+                    return ListTile(
+                      leading: const Icon(Icons.play_circle_fill),
+                      title: Text('Continue Workout: ${wk.name ?? 'Workout'}'),
+                      trailing: ElevatedButton(
+                        onPressed: () => context.pushNamed('workout.active'),
+                        child: const Text('Resume'),
+                      ),
                     );
                   }
-                  return ListTile(
-                    leading: const Icon(Icons.fitness_center),
-                    title: Text('Today’s Workout: ${tpl.name}'),
-                    trailing: ElevatedButton(
-                      onPressed: () async {
-                        await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
-                        if (!context.mounted) return;
-                        context.pushNamed('workout.active');
-                      },
-                      child: const Text('Start/Resume'),
-                    ),
+                  return scheduledTemplate.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, st) => const SizedBox.shrink(),
+                    data: (tpl) {
+                      if (tpl == null) {
+                        return const ListTile(
+                          leading: Icon(Icons.event_busy),
+                          title: Text('No workout scheduled today'),
+                        );
+                      }
+                      return ListTile(
+                        leading: const Icon(Icons.fitness_center),
+                        title: Text('Today’s Workout: ${tpl.name}'),
+                        trailing: ElevatedButton(
+                          onPressed: () async {
+                            await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
+                            if (!context.mounted) return;
+                            context.pushNamed('workout.active');
+                          },
+                          child: const Text('Start'),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
