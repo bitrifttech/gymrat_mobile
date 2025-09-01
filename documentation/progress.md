@@ -48,3 +48,11 @@
 - UI: `FoodLogScreen` with meal selector, manual entry form (name/brand/serving/calories/protein/carbs/fats + quantity/unit), recent foods list (shows kcal + P/C/F) with quantity/unit prompt, and per-meal subtotals.
 - Home integration: rings now reflect live totals from today's logged meals.
 - Analyzer: clean; verified on iOS simulator.
+
+## Milestone 4 (Barcode Scanner + Food Search)
+- Schema: Extended `foods` with `barcode`, `source`, `remoteId`, `isCustom`, `servingQty`, `servingUnit` (schema v3).
+- Repository: Integrated Open Food Facts (search + barcode); cached results locally; helpers for fetch by barcode and listing cached results.
+- UI: Added `ScanFoodScreen` (camera via `mobile_scanner`) and `FoodSearchScreen` with add-to-meal prompts (meal selection + qty/unit).
+- Food Log: Added Scan and Search actions in the app bar.
+- iOS: Set `NSCameraUsageDescription` for barcode scanning.
+- Analyzer: clean; verified in iOS simulator; scan and search add items and update Home rings immediately.
