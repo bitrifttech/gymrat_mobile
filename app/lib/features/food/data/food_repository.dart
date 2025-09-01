@@ -17,6 +17,22 @@ class MacroTotals {
   final int fatsG;
 }
 
+class MealTotals {
+  const MealTotals({
+    required this.mealType,
+    required this.calories,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatsG,
+  });
+
+  final String mealType;
+  final int calories;
+  final int proteinG;
+  final int carbsG;
+  final int fatsG;
+}
+
 class FoodRepository {
   FoodRepository(this._db);
   final AppDatabase _db;
@@ -167,6 +183,36 @@ class FoodRepository {
       );
     });
   }
+
+  Stream<List<MealTotals>> watchTodayPerMealTotals() {
+    final day = _dateOnly(DateTime.now());
+    final query = _db.customSelect(
+      'SELECT m.meal_type AS mealType, '
+      'COALESCE(SUM(mi.calories), 0) AS calories, '
+      'COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+      'COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+      'COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+      'FROM meal_items mi '
+      'JOIN meals m ON m.id = mi.meal_id '
+      'WHERE m.date = ?1 '
+      'GROUP BY m.meal_type '
+      'ORDER BY m.meal_type',
+      variables: [Variable<DateTime>(day)],
+      readsFrom: {_db.mealItems, _db.meals},
+    );
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        final data = row.data;
+        return MealTotals(
+          mealType: (data['mealType'] as String?) ?? '',
+          calories: (data['calories'] as int?) ?? 0,
+          proteinG: (data['proteinG'] as int?) ?? 0,
+          carbsG: (data['carbsG'] as int?) ?? 0,
+          fatsG: (data['fatsG'] as int?) ?? 0,
+        );
+      }).toList();
+    });
+  }
 }
 
 final foodRepositoryProvider = Provider<FoodRepository>((ref) {
@@ -180,4 +226,8 @@ final todayTotalsProvider = StreamProvider<MacroTotals>((ref) {
 
 final recentFoodsProvider = FutureProvider.autoDispose<List<Food>>((ref) async {
   return ref.read(foodRepositoryProvider).listRecentFoodsUsed(limit: 10);
+});
+
+final todayPerMealTotalsProvider = StreamProvider<List<MealTotals>>((ref) {
+  return ref.read(foodRepositoryProvider).watchTodayPerMealTotals();
 });

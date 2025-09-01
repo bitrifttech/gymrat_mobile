@@ -18,6 +18,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
   final _proteinCtrl = TextEditingController();
   final _carbCtrl = TextEditingController();
   final _fatCtrl = TextEditingController();
+  final _qtyCtrl = TextEditingController(text: '1');
+  final _unitCtrl = TextEditingController();
 
   String _mealType = 'breakfast';
 
@@ -30,6 +32,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     _proteinCtrl.dispose();
     _carbCtrl.dispose();
     _fatCtrl.dispose();
+    _qtyCtrl.dispose();
+    _unitCtrl.dispose();
     super.dispose();
   }
 
@@ -37,6 +41,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     if (!_formKey.currentState!.validate()) return;
     final repo = ref.read(foodRepositoryProvider);
     final messenger = ScaffoldMessenger.of(context);
+    final qty = double.tryParse(_qtyCtrl.text) ?? 1.0;
     await repo.addCustomFoodToMeal(
       name: _nameCtrl.text.trim(),
       brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
@@ -46,6 +51,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
       carbsG: int.parse(_carbCtrl.text),
       fatsG: int.parse(_fatCtrl.text),
       mealType: _mealType,
+      quantity: qty,
+      unit: _unitCtrl.text.trim().isEmpty ? null : _unitCtrl.text.trim(),
     );
     if (!mounted) return;
     messenger.showSnackBar(const SnackBar(content: Text('Food added')));
@@ -57,11 +64,59 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     _proteinCtrl.clear();
     _carbCtrl.clear();
     _fatCtrl.clear();
+    _qtyCtrl.text = '1';
+    _unitCtrl.clear();
+  }
+
+  Future<void> _promptAndAddRecent({required int foodId}) async {
+    final qtyController = TextEditingController(text: '1');
+    final unitController = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<(double qty, String? unit)>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Add Quantity'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+              TextField(
+                controller: unitController,
+                decoration: const InputDecoration(labelText: 'Unit (optional)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final q = double.tryParse(qtyController.text) ?? 1.0;
+                final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
+                Navigator.of(ctx).pop((q, u));
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null) return;
+    final (qty, unit) = result;
+    final repo = ref.read(foodRepositoryProvider);
+    await repo.addExistingFoodToMeal(foodId: foodId, mealType: _mealType, quantity: qty, unit: unit);
+    if (!mounted) return;
+    messenger.showSnackBar(const SnackBar(content: Text('Food added')));
   }
 
   @override
   Widget build(BuildContext context) {
     final recent = ref.watch(recentFoodsProvider);
+    final perMeal = ref.watch(todayPerMealTotalsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Log Food')),
@@ -145,6 +200,25 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _qtyCtrl,
+                        decoration: const InputDecoration(labelText: 'Quantity'),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _unitCtrl,
+                        decoration: const InputDecoration(labelText: 'Unit (optional)'),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
@@ -183,14 +257,32 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                           ],
                         ),
                         trailing: Text('${f.calories} kcal'),
-                        onTap: () async {
-                          final repo = ref.read(foodRepositoryProvider);
-                          final messenger = ScaffoldMessenger.of(context);
-                          await repo.addExistingFoodToMeal(foodId: f.id, mealType: _mealType);
-                          if (!mounted) return;
-                          messenger.showSnackBar(SnackBar(content: Text('Added ${f.name}')));
-                        },
+                        onTap: () => _promptAndAddRecent(foodId: f.id),
                       ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Text('Per-meal Subtotals', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          perMeal.when(
+            loading: () => const Center(child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            )),
+            error: (e, st) => Text('Error: $e'),
+            data: (list) {
+              if (list.isEmpty) return const Text('No items logged today');
+              return Column(
+                children: [
+                  for (final m in list)
+                    ListTile(
+                      leading: const Icon(Icons.restaurant_menu),
+                      title: Text(_prettyMeal(m.mealType)),
+                      subtitle: Text('P ${m.proteinG}g • C ${m.carbsG}g • F ${m.fatsG}g'),
+                      trailing: Text('${m.calories} kcal'),
                     ),
                 ],
               );
@@ -199,5 +291,20 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
         ],
       ),
     );
+  }
+
+  String _prettyMeal(String t) {
+    switch (t) {
+      case 'breakfast':
+        return 'Breakfast';
+      case 'lunch':
+        return 'Lunch';
+      case 'dinner':
+        return 'Dinner';
+      case 'snack':
+        return 'Snack';
+      default:
+        return t;
+    }
   }
 }
