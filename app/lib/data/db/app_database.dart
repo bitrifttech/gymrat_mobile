@@ -91,6 +91,7 @@ class Workouts extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
   TextColumn get name => text().nullable()();
+  IntColumn get sourceTemplateId => integer().nullable().customConstraint('NULL REFERENCES workout_templates(id) ON DELETE SET NULL')();
   DateTimeColumn get startedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get finishedAt => dateTime().nullable()();
 }
@@ -112,6 +113,27 @@ class WorkoutSets extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class WorkoutTemplates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class TemplateExercises extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get templateId => integer().customConstraint('NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE')();
+  TextColumn get exerciseName => text()();
+  IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+}
+
+class WorkoutSchedule extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  IntColumn get dayOfWeek => integer()(); // 1=Mon..7=Sun
+  IntColumn get templateId => integer().customConstraint('NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE')();
+}
+
 @DriftDatabase(
   tables: [
     Settings,
@@ -124,13 +146,16 @@ class WorkoutSets extends Table {
     Workouts,
     WorkoutExercises,
     WorkoutSets,
+    WorkoutTemplates,
+    TemplateExercises,
+    WorkoutSchedule,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +181,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(workouts);
             await m.createTable(workoutExercises);
             await m.createTable(workoutSets);
+          }
+          if (from < 5) {
+            await m.createTable(workoutTemplates);
+            await m.createTable(templateExercises);
+            await m.createTable(workoutSchedule);
+            await m.addColumn(workouts, workouts.sourceTemplateId);
           }
         },
       );

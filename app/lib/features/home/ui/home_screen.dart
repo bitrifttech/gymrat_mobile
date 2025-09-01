@@ -4,6 +4,7 @@ import 'package:app/features/home/data/home_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'widgets/macro_ring.dart';
 import 'package:app/features/food/data/food_repository.dart';
+import 'package:app/features/workout/data/workout_repository.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -12,6 +13,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final latestGoal = ref.watch(latestGoalProvider);
     final todayTotals = ref.watch(todayTotalsProvider);
+    final scheduledTemplate = ref.watch(scheduledTemplateTodayProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('GymRat'),
@@ -77,16 +79,37 @@ class HomeScreen extends ConsumerWidget {
                   ElevatedButton.icon(onPressed: () => context.pushNamed('meals.today'), icon: const Icon(Icons.fastfood), label: const Text("Today's Meals")),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('workout.active'), icon: const Icon(Icons.play_arrow), label: const Text('Active Workout')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('workout.history'), icon: const Icon(Icons.history), label: const Text('Workout History')),
+                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.templates'), icon: const Icon(Icons.article), label: const Text('Templates')),
+                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.schedule'), icon: const Icon(Icons.calendar_today), label: const Text('Schedule')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('task.add'), icon: const Icon(Icons.check_circle), label: const Text('Add Task')),
                 ],
               ),
               const SizedBox(height: 24),
               Text('Today’s Tasks', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              const ListTile(
-                leading: Icon(Icons.check_box_outline_blank),
-                title: Text('No tasks configured'),
-                subtitle: Text('Tasks will appear here once added.'),
+              scheduledTemplate.when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, st) => const SizedBox.shrink(),
+                data: (tpl) {
+                  if (tpl == null) {
+                    return const ListTile(
+                      leading: Icon(Icons.event_busy),
+                      title: Text('No workout scheduled today'),
+                    );
+                  }
+                  return ListTile(
+                    leading: const Icon(Icons.fitness_center),
+                    title: Text('Today’s Workout: ${tpl.name}'),
+                    trailing: ElevatedButton(
+                      onPressed: () async {
+                        await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
+                        if (!context.mounted) return;
+                        context.pushNamed('workout.active');
+                      },
+                      child: const Text('Start/Resume'),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               Text('Workout', style: Theme.of(context).textTheme.titleMedium),

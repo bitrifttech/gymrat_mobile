@@ -7,6 +7,8 @@ class WorkoutRepository {
   WorkoutRepository(this._db);
   final AppDatabase _db;
 
+  DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
   Future<int> _getCurrentUserId() async {
     final u = await (_db.select(_db.users)
           ..orderBy([(u) => OrderingTerm.asc(u.id)])
@@ -16,11 +18,14 @@ class WorkoutRepository {
     return u.id;
   }
 
-  Future<int> startWorkout({String? name}) async {
+  // ----- Active workout flow -----
+
+  Future<int> startWorkout({String? name, int? sourceTemplateId}) async {
     final userId = await _getCurrentUserId();
     return _db.into(_db.workouts).insert(WorkoutsCompanion.insert(
       userId: userId,
       name: Value(name),
+      sourceTemplateId: Value(sourceTemplateId),
     ));
   }
 
@@ -107,6 +112,127 @@ class WorkoutRepository {
       ..limit(limit));
     return q.watch();
   }
+
+  // ----- Templates & Schedule -----
+
+  Future<int> createTemplate(String name) async {
+    final userId = await _getCurrentUserId();
+    return _db.into(_db.workoutTemplates).insert(WorkoutTemplatesCompanion.insert(userId: userId, name: name));
+  }
+
+  Future<void> deleteTemplate(int templateId) async {
+    await (_db.delete(_db.workoutTemplates)..where((t) => t.id.equals(templateId))).go();
+  }
+
+  Future<int> addTemplateExercise({required int templateId, required String exerciseName}) async {
+    final current = await (_db.select(_db.templateExercises)
+          ..where((te) => te.templateId.equals(templateId))
+          ..orderBy([(te) => OrderingTerm.desc(te.orderIndex)])
+          ..limit(1))
+        .getSingleOrNull();
+    final nextIndex = (current?.orderIndex ?? -1) + 1;
+    return _db.into(_db.templateExercises).insert(TemplateExercisesCompanion.insert(
+      templateId: templateId,
+      exerciseName: exerciseName.trim(),
+      orderIndex: Value(nextIndex),
+    ));
+  }
+
+  Stream<List<WorkoutTemplate>> watchTemplates() {
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      return (_db.select(_db.workoutTemplates)
+            ..where((t) => t.userId.equals(userId))
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .watch();
+    });
+  }
+
+  Stream<List<TemplateExercise>> watchTemplateExercises(int templateId) {
+    final q = (_db.select(_db.templateExercises)
+      ..where((te) => te.templateId.equals(templateId))
+      ..orderBy([(te) => OrderingTerm.asc(te.orderIndex)]));
+    return q.watch();
+  }
+
+  Future<void> setSchedule({required int dayOfWeek, required int templateId}) async {
+    final userId = await _getCurrentUserId();
+    final existing = await (_db.select(_db.workoutSchedule)
+          ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(dayOfWeek)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await _db.into(_db.workoutSchedule).insert(WorkoutScheduleCompanion.insert(
+        userId: userId,
+        dayOfWeek: dayOfWeek,
+        templateId: templateId,
+      ));
+    } else {
+      await (_db.update(_db.workoutSchedule)..where((s) => s.id.equals(existing.id))).write(
+        WorkoutScheduleCompanion(templateId: Value(templateId)),
+      );
+    }
+  }
+
+  Stream<WorkoutTemplate?> watchScheduledTemplateForDate(DateTime date) {
+    final day = date.weekday; // 1..7
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) async* {
+      final sched = await (_db.select(_db.workoutSchedule)
+            ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(day))
+            ..limit(1))
+          .getSingleOrNull();
+      if (sched == null) {
+        yield null;
+      } else {
+        yield* (_db.select(_db.workoutTemplates)..where((t) => t.id.equals(sched.templateId))).watchSingle();
+      }
+    });
+  }
+
+  Future<Workout?> _findActiveWorkoutForTemplateToday(int templateId) async {
+    final today = _dateOnly(DateTime.now());
+    final rows = await _db.customSelect(
+      'SELECT * FROM workouts WHERE source_template_id = ?1 AND finished_at IS NULL',
+      variables: [Variable<int>(templateId)],
+      readsFrom: {_db.workouts},
+    ).get();
+    if (rows.isEmpty) return null;
+    // Filter by date (started today)
+    for (final r in rows) {
+      final w = _db.workouts.map(r.data);
+      final started = _dateOnly(w.startedAt);
+      if (started == today) return w;
+    }
+    return null;
+  }
+
+  Future<int?> startWorkoutFromTemplate(int templateId) async {
+    final template = await (_db.select(_db.workoutTemplates)..where((t) => t.id.equals(templateId))).getSingleOrNull();
+    if (template == null) return null;
+    final workoutId = await startWorkout(name: template.name, sourceTemplateId: template.id);
+    final te = await (_db.select(_db.templateExercises)
+          ..where((e) => e.templateId.equals(template.id))
+          ..orderBy([(e) => OrderingTerm.asc(e.orderIndex)]))
+        .get();
+    for (final e in te) {
+      await addExerciseToWorkout(workoutId: workoutId, exerciseName: e.exerciseName);
+    }
+    return workoutId;
+  }
+
+  Future<int?> startOrResumeTodaysScheduledWorkout() async {
+    final now = DateTime.now();
+    final day = now.weekday;
+    final userId = await _getCurrentUserId();
+    final sched = await (_db.select(_db.workoutSchedule)
+          ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(day))
+          ..limit(1))
+        .getSingleOrNull();
+    if (sched == null) return null;
+    final active = await _findActiveWorkoutForTemplateToday(sched.templateId);
+    if (active != null) return active.id;
+    return startWorkoutFromTemplate(sched.templateId);
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -128,4 +254,16 @@ final workoutExerciseSetsProvider = StreamProvider.family<List<WorkoutSet>, int>
 
 final workoutHistoryProvider = StreamProvider<List<Workout>>((ref) {
   return ref.read(workoutRepositoryProvider).watchWorkoutHistory();
+});
+
+final templatesProvider = StreamProvider<List<WorkoutTemplate>>((ref) {
+  return ref.read(workoutRepositoryProvider).watchTemplates();
+});
+
+final templateExercisesProvider = StreamProvider.family<List<TemplateExercise>, int>((ref, templateId) {
+  return ref.read(workoutRepositoryProvider).watchTemplateExercises(templateId);
+});
+
+final scheduledTemplateTodayProvider = StreamProvider<WorkoutTemplate?>((ref) {
+  return ref.read(workoutRepositoryProvider).watchScheduledTemplateForDate(DateTime.now());
 });
