@@ -5,6 +5,7 @@ import 'package:app/features/home/ui/home_screen.dart';
 import 'package:app/features/onboarding/ui/launch_screen.dart';
 import 'package:app/features/onboarding/ui/onboarding_screen.dart';
 import 'package:app/features/settings/ui/edit_settings_screen.dart';
+import 'package:app/features/food/ui/food_log_screen.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -52,7 +53,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/food/log',
         name: 'food.log',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: _StubScreen('Food Logging (stub)'));
+          return const NoTransitionPage(child: FoodLogScreen());
         },
       ),
       GoRoute(

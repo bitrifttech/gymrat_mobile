@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/home/data/home_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'widgets/macro_ring.dart';
+import 'package:app/features/food/data/food_repository.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -10,6 +11,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final latestGoal = ref.watch(latestGoalProvider);
+    final todayTotals = ref.watch(todayTotalsProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('GymRat'),
@@ -41,22 +43,27 @@ class HomeScreen extends ConsumerWidget {
             );
           }
 
-          // Placeholder current values: 0 until logging implemented.
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text('Today', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.spaceEvenly,
-                children: [
-                  MacroRing(label: 'Calories', current: 0, target: g.caloriesMax.toDouble()),
-                  MacroRing(label: 'Protein (g)', current: 0, target: g.proteinG.toDouble()),
-                  MacroRing(label: 'Carbs (g)', current: 0, target: g.carbsG.toDouble()),
-                  MacroRing(label: 'Fats (g)', current: 0, target: g.fatsG.toDouble()),
-                ],
+              todayTotals.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) => Center(child: Text('Error: $e')),
+                data: (t) {
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    alignment: WrapAlignment.spaceEvenly,
+                    children: [
+                      MacroRing(label: 'Calories', current: t.calories.toDouble(), target: g.caloriesMax.toDouble()),
+                      MacroRing(label: 'Protein (g)', current: t.proteinG.toDouble(), target: g.proteinG.toDouble()),
+                      MacroRing(label: 'Carbs (g)', current: t.carbsG.toDouble(), target: g.carbsG.toDouble()),
+                      MacroRing(label: 'Fats (g)', current: t.fatsG.toDouble(), target: g.fatsG.toDouble()),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
               Text('Quick Actions', style: Theme.of(context).textTheme.titleMedium),

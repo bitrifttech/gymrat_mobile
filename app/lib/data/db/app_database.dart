@@ -37,12 +37,61 @@ class Goals extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Settings, Users, Goals])
+class Foods extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get name => text()();
+  TextColumn get brand => text().nullable()();
+  TextColumn get servingDesc => text().nullable()();
+  IntColumn get proteinG => integer().withDefault(const Constant(0))();
+  IntColumn get carbsG => integer().withDefault(const Constant(0))();
+  IntColumn get fatsG => integer().withDefault(const Constant(0))();
+  IntColumn get calories => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class Meals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  // Store date at local midnight
+  DateTimeColumn get date => dateTime()();
+  TextColumn get mealType => text()(); // breakfast|lunch|dinner|snack
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class MealItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get mealId => integer().customConstraint('NOT NULL REFERENCES meals(id) ON DELETE CASCADE')();
+  IntColumn get foodId => integer().customConstraint('NOT NULL REFERENCES foods(id) ON DELETE CASCADE')();
+  RealColumn get quantity => real().withDefault(const Constant(1.0))();
+  TextColumn get unit => text().nullable()();
+  IntColumn get proteinG => integer().withDefault(const Constant(0))();
+  IntColumn get carbsG => integer().withDefault(const Constant(0))();
+  IntColumn get fatsG => integer().withDefault(const Constant(0))();
+  IntColumn get calories => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [Settings, Users, Goals, Foods, Meals, MealItems])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(foods);
+            await m.createTable(meals);
+            await m.createTable(mealItems);
+          }
+        },
+      );
 
   Future<void> upsertSetting(String key, String value) async {
     final existing = await (select(settings)..where((tbl) => tbl.key.equals(key))).getSingleOrNull();
