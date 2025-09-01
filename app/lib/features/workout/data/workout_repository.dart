@@ -253,20 +253,31 @@ class WorkoutRepository {
     return {for (final te in list) te.exerciseName: te};
   }
 
-  Future<Workout?> _findActiveWorkoutForTemplateToday(int templateId) async {
+  Stream<bool> watchIsTodaysScheduledWorkoutCompleted() {
     final today = _dateOnly(DateTime.now());
-    final rows = await _db.customSelect(
-      'SELECT * FROM workouts WHERE source_template_id = ?1 AND finished_at IS NULL',
-      variables: [Variable<int>(templateId)],
-      readsFrom: {_db.workouts},
-    ).get();
-    if (rows.isEmpty) return null;
-    for (final r in rows) {
-      final w = _db.workouts.map(r.data);
-      final started = _dateOnly(w.startedAt);
-      if (started == today) return w;
-    }
-    return null;
+    final tomorrow = today.add(const Duration(days: 1));
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      final sched$ = (_db.select(_db.workoutSchedule)
+            ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(today.weekday))
+            ..limit(1))
+          .watchSingleOrNull();
+      final finished$ = (_db.select(_db.workouts)
+            ..where((w) => w.finishedAt.isNotNull()))
+          .watch();
+      return sched$.asyncExpand((sched) {
+        return finished$.map((list) {
+          for (final w in list) {
+            final started = w.startedAt;
+            if (started.isAfter(today.subtract(const Duration(seconds: 1))) && started.isBefore(tomorrow)) {
+              if (sched == null) return true; // any finished today counts
+              if (w.sourceTemplateId != null && w.sourceTemplateId == sched.templateId) return true;
+            }
+          }
+          return false;
+        });
+      });
+    });
   }
 
   Future<int?> startWorkoutFromTemplate(int templateId) async {
@@ -283,6 +294,22 @@ class WorkoutRepository {
     return workoutId;
   }
 
+  Future<Workout?> _findActiveWorkoutForTemplateToday(int templateId) async {
+    final today = _dateOnly(DateTime.now());
+    final rows = await _db.customSelect(
+      'SELECT * FROM workouts WHERE source_template_id = ?1 AND finished_at IS NULL',
+      variables: [Variable<int>(templateId)],
+      readsFrom: {_db.workouts},
+    ).get();
+    if (rows.isEmpty) return null;
+    for (final r in rows) {
+      final w = _db.workouts.map(r.data);
+      final started = _dateOnly(w.startedAt);
+      if (started == today) return w;
+    }
+    return null;
+  }
+
   Future<int?> startOrResumeTodaysScheduledWorkout() async {
     final now = DateTime.now();
     final day = now.weekday;
@@ -295,6 +322,37 @@ class WorkoutRepository {
     final active = await _findActiveWorkoutForTemplateToday(sched.templateId);
     if (active != null) return active.id;
     return startWorkoutFromTemplate(sched.templateId);
+  }
+
+  Future<int> restartWorkoutFrom(int oldWorkoutId) async {
+    final old = await (_db.select(_db.workouts)..where((w) => w.id.equals(oldWorkoutId))).getSingle();
+    final newWorkoutId = await startWorkout(name: old.name, sourceTemplateId: old.sourceTemplateId);
+    final oldExercises = await (_db.select(_db.workoutExercises)
+          ..where((we) => we.workoutId.equals(oldWorkoutId))
+          ..orderBy([(we) => OrderingTerm.asc(we.orderIndex)]))
+        .get();
+    for (final we in oldExercises) {
+      // Find exercise name
+      final ex = await (_db.select(_db.exercises)..where((e) => e.id.equals(we.exerciseId))).getSingle();
+      final newWeId = await addExerciseToWorkout(workoutId: newWorkoutId, exerciseName: ex.name);
+      final oldSets = await (_db.select(_db.workoutSets)
+            ..where((ws) => ws.workoutExerciseId.equals(we.id))
+            ..orderBy([(ws) => OrderingTerm.asc(ws.setIndex)]))
+          .get();
+      for (final s in oldSets) {
+        await _db.into(_db.workoutSets).insert(WorkoutSetsCompanion.insert(
+          workoutExerciseId: newWeId,
+          setIndex: Value(s.setIndex),
+          weight: Value(s.weight),
+          reps: Value(s.reps),
+        ));
+      }
+    }
+    return newWorkoutId;
+  }
+
+  Future<Workout?> getWorkoutById(int id) async {
+    return (_db.select(_db.workouts)..where((w) => w.id.equals(id))).getSingleOrNull();
   }
 }
 
@@ -337,4 +395,8 @@ final scheduleProvider = StreamProvider<List<WorkoutScheduleData>>((ref) {
 
 final workoutTemplateTargetsProvider = FutureProvider.family<Map<String, TemplateExercise>, int>((ref, workoutId) {
   return ref.read(workoutRepositoryProvider).readTemplateTargetsForWorkout(workoutId);
+});
+
+final todaysScheduledWorkoutCompletedProvider = StreamProvider<bool>((ref) {
+  return ref.read(workoutRepositoryProvider).watchIsTodaysScheduledWorkoutCompleted();
 });
