@@ -76,6 +76,34 @@ class WorkoutRepository {
     ));
   }
 
+  Future<void> upsertSetByIndex({
+    required int workoutExerciseId,
+    required int setIndex,
+    double? weight,
+    int? reps,
+  }) async {
+    final existing = await (_db.select(_db.workoutSets)
+          ..where((ws) => ws.workoutExerciseId.equals(workoutExerciseId) & ws.setIndex.equals(setIndex))
+          ..limit(1))
+        .getSingleOrNull();
+    final comp = WorkoutSetsCompanion(
+      weight: Value(weight),
+      reps: Value(reps),
+    );
+    if (existing == null) {
+      await _db.into(_db.workoutSets).insert(WorkoutSetsCompanion.insert(
+            workoutExerciseId: workoutExerciseId,
+            setIndex: Value(setIndex),
+            weight: Value(weight),
+            reps: Value(reps),
+          ));
+    } else {
+      await (_db.update(_db.workoutSets)
+            ..where((ws) => ws.id.equals(existing.id)))
+          .write(comp);
+    }
+  }
+
   Stream<Workout?> watchActiveWorkout() {
     final query = (_db.select(_db.workouts)
       ..where((w) => w.finishedAt.isNull())
@@ -215,6 +243,16 @@ class WorkoutRepository {
     });
   }
 
+  Future<Map<String, TemplateExercise>> readTemplateTargetsForWorkout(int workoutId) async {
+    final workout = await (_db.select(_db.workouts)..where((w) => w.id.equals(workoutId))).getSingleOrNull();
+    final templateId = workout?.sourceTemplateId;
+    if (templateId == null) return {};
+    final list = await (_db.select(_db.templateExercises)
+          ..where((te) => te.templateId.equals(templateId)))
+        .get();
+    return {for (final te in list) te.exerciseName: te};
+  }
+
   Future<Workout?> _findActiveWorkoutForTemplateToday(int templateId) async {
     final today = _dateOnly(DateTime.now());
     final rows = await _db.customSelect(
@@ -295,4 +333,8 @@ final scheduledTemplateTodayProvider = StreamProvider<WorkoutTemplate?>((ref) {
 
 final scheduleProvider = StreamProvider<List<WorkoutScheduleData>>((ref) {
   return ref.read(workoutRepositoryProvider).watchSchedule();
+});
+
+final workoutTemplateTargetsProvider = FutureProvider.family<Map<String, TemplateExercise>, int>((ref, workoutId) {
+  return ref.read(workoutRepositoryProvider).readTemplateTargetsForWorkout(workoutId);
 });

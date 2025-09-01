@@ -11,20 +11,11 @@ class ActiveWorkoutScreen extends ConsumerStatefulWidget {
 
 class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   final _exerciseCtrl = TextEditingController();
-  final _weightCtrl = TextEditingController();
-  final _repsCtrl = TextEditingController();
 
   @override
   void dispose() {
     _exerciseCtrl.dispose();
-    _weightCtrl.dispose();
-    _repsCtrl.dispose();
     super.dispose();
-  }
-
-  String _targetLabelFor(String exerciseName) {
-    // In a future iteration, this could join via template mapping. For now, we show label only if a template exists with matching name in current workout's source.
-    return '';
   }
 
   @override
@@ -70,6 +61,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
           }
 
           final exercises = ref.watch(workoutExercisesProvider(w.id));
+          final targets = ref.watch(workoutTemplateTargetsProvider(w.id));
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
@@ -78,7 +70,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                   Expanded(
                     child: TextField(
                       controller: _exerciseCtrl,
-                      decoration: const InputDecoration(labelText: 'Exercise name'),
+                      decoration: const InputDecoration(labelText: 'Add exercise by name'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -89,7 +81,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                       await ref.read(workoutRepositoryProvider).addExerciseToWorkout(workoutId: w.id, exerciseName: name);
                       _exerciseCtrl.clear();
                     },
-                    child: const Text('Add Exercise'),
+                    child: const Text('Add'),
                   ),
                 ],
               ),
@@ -98,83 +90,101 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, st) => Text('Error: $e'),
                 data: (pairs) {
+                  final targetsMap = targets.maybeWhen(data: (m) => m, orElse: () => const {});
                   if (pairs.isEmpty) return const Text('No exercises yet');
                   return Column(
                     children: [
                       for (final (we, ex) in pairs)
                         Card(
-                          child: ExpansionTile(
-                            title: Text(ex.name),
-                            subtitle: Text(_targetLabelFor(ex.name)),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Row(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _weightCtrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(labelText: 'Weight'),
-                                      ),
-                                    ),
+                                    const Icon(Icons.fitness_center),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _repsCtrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(labelText: 'Reps'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton(
-                                      onPressed: () async {
-                                        final weight = double.tryParse(_weightCtrl.text);
-                                        final reps = int.tryParse(_repsCtrl.text);
-                                        await ref.read(workoutRepositoryProvider).addSet(
-                                              workoutExerciseId: we.id,
-                                              weight: weight,
-                                              reps: reps,
-                                            );
-                                        _weightCtrl.clear();
-                                        _repsCtrl.clear();
-                                      },
-                                      child: const Text('Add Set'),
-                                    ),
+                                    Text(ex.name, style: Theme.of(context).textTheme.titleMedium),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Consumer(builder: (context, ref, _) {
-                                final sets = ref.watch(workoutExerciseSetsProvider(we.id));
-                                return sets.when(
-                                  loading: () => const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                  error: (e, st) => Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text('Error: $e'),
-                                  ),
-                                  data: (ss) {
-                                    if (ss.isEmpty) return const Padding(
+                                const SizedBox(height: 8),
+                                Builder(builder: (ctx) {
+                                  final t = targetsMap[ex.name];
+                                  final setsTarget = t?.setsCount ?? 0;
+                                  final repsLabel = (t?.repsMin != null || t?.repsMax != null)
+                                      ? '${t?.repsMin ?? ''}${t?.repsMin != null && t?.repsMax != null ? '-' : ''}${t?.repsMax ?? ''} reps'
+                                      : '';
+                                  final setsWidgets = <Widget>[];
+                                  final existingSets = ref.watch(workoutExerciseSetsProvider(we.id));
+                                  setsWidgets.add(existingSets.when(
+                                    loading: () => const Padding(
                                       padding: EdgeInsets.all(8.0),
-                                      child: Text('No sets yet'),
-                                    );
-                                    return Column(
-                                      children: [
-                                        for (final s in ss)
-                                          ListTile(
-                                            leading: const Icon(Icons.fitness_center),
-                                            title: Text('Set ${s.setIndex}'),
-                                            subtitle: Text('Weight: ${s.weight?.toStringAsFixed(1) ?? '-'}  •  Reps: ${s.reps ?? '-'}'),
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                    error: (e, st) => Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text('Error: $e'),
+                                    ),
+                                    data: (ss) {
+                                      final int maxRows = setsTarget > 0 ? setsTarget : ss.length;
+                                      final rows = <Widget>[];
+                                      for (int i = 1; i <= (maxRows == 0 ? 1 : maxRows); i++) {
+                                        final existing = ss.where((s) => s.setIndex == i).toList();
+                                        final weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(1) : '');
+                                        final repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
+                                        rows.add(Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(width: 28, child: Text('#$i')),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: repsCtrl,
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: InputDecoration(labelText: repsLabel.isEmpty ? 'Reps' : 'Reps ($repsLabel)'),
+                                                  onSubmitted: (_) async {
+                                                    final reps = int.tryParse(repsCtrl.text);
+                                                    final weight = double.tryParse(weightCtrl.text);
+                                                    await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                          workoutExerciseId: we.id,
+                                                          setIndex: i,
+                                                          reps: reps,
+                                                          weight: weight,
+                                                        );
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: weightCtrl,
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(labelText: 'Weight'),
+                                                  onSubmitted: (_) async {
+                                                    final reps = int.tryParse(repsCtrl.text);
+                                                    final weight = double.tryParse(weightCtrl.text);
+                                                    await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                          workoutExerciseId: we.id,
+                                                          setIndex: i,
+                                                          reps: reps,
+                                                          weight: weight,
+                                                        );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              }),
-                            ],
+                                        ));
+                                      }
+                                      return Column(children: rows);
+                                    },
+                                  ));
+                                  return Column(children: setsWidgets);
+                                }),
+                              ],
+                            ),
                           ),
                         ),
                     ],
