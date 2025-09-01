@@ -9,6 +9,8 @@ import 'package:app/features/food/ui/food_log_screen.dart';
 import 'package:app/features/food/ui/meals_today_screen.dart';
 import 'package:app/features/food/ui/scan_food_screen.dart';
 import 'package:app/features/food/ui/food_search_screen.dart';
+import 'package:app/features/workout/ui/active_workout_screen.dart';
+import 'package:app/features/workout/ui/workout_history_screen.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -81,10 +83,24 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/workout/active',
+        name: 'workout.active',
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return const NoTransitionPage(child: ActiveWorkoutScreen());
+        },
+      ),
+      GoRoute(
+        path: '/workout/history',
+        name: 'workout.history',
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return const NoTransitionPage(child: WorkoutHistoryScreen());
+        },
+      ),
+      GoRoute(
         path: '/workout/start',
         name: 'workout.start',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: _StubScreen('Start Workout (stub)'));
+          return const NoTransitionPage(child: ActiveWorkoutScreen());
         },
       ),
       GoRoute(

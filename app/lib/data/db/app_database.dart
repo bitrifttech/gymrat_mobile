@@ -80,12 +80,57 @@ class MealItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Settings, Users, Goals, Foods, Meals, MealItems])
+class Exercises extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class Workouts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get name => text().nullable()();
+  DateTimeColumn get startedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get finishedAt => dateTime().nullable()();
+}
+
+class WorkoutExercises extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get workoutId => integer().customConstraint('NOT NULL REFERENCES workouts(id) ON DELETE CASCADE')();
+  IntColumn get exerciseId => integer().customConstraint('NOT NULL REFERENCES exercises(id) ON DELETE CASCADE')();
+  IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class WorkoutSets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get workoutExerciseId => integer().customConstraint('NOT NULL REFERENCES workout_exercises(id) ON DELETE CASCADE')();
+  IntColumn get setIndex => integer().withDefault(const Constant(1))();
+  RealColumn get weight => real().nullable()();
+  IntColumn get reps => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(
+  tables: [
+    Settings,
+    Users,
+    Goals,
+    Foods,
+    Meals,
+    MealItems,
+    Exercises,
+    Workouts,
+    WorkoutExercises,
+    WorkoutSets,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,6 +150,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(foods, foods.isCustom);
             await m.addColumn(foods, foods.servingQty);
             await m.addColumn(foods, foods.servingUnit);
+          }
+          if (from < 4) {
+            await m.createTable(exercises);
+            await m.createTable(workouts);
+            await m.createTable(workoutExercises);
+            await m.createTable(workoutSets);
           }
         },
       );

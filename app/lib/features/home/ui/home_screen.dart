@@ -75,7 +75,8 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   ElevatedButton.icon(onPressed: () => context.pushNamed('food.log'), icon: const Icon(Icons.restaurant), label: const Text('Log Food')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('meals.today'), icon: const Icon(Icons.fastfood), label: const Text("Today's Meals")),
-                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.start'), icon: const Icon(Icons.fitness_center), label: const Text('Start Workout')),
+                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.active'), icon: const Icon(Icons.play_arrow), label: const Text('Active Workout')),
+                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.history'), icon: const Icon(Icons.history), label: const Text('Workout History')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('task.add'), icon: const Icon(Icons.check_circle), label: const Text('Add Task')),
                 ],
               ),
