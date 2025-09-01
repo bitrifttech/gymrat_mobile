@@ -54,6 +54,10 @@ class FoodRepository {
     return u.id;
   }
 
+  Future<Food?> getFoodById(int id) async {
+    return (_db.select(_db.foods)..where((f) => f.id.equals(id))).getSingleOrNull();
+  }
+
   Future<int> addCustomFood({
     required String name,
     String? brand,
@@ -283,7 +287,6 @@ class FoodRepository {
     double? servingQty;
     String? servingUnit;
     if (servingDesc != null) {
-      // naive parse like "30 g" → qty=30, unit=g
       final parts = servingDesc.split(' ');
       if (parts.length >= 2) {
         servingQty = double.tryParse(parts[0]);
@@ -296,7 +299,6 @@ class FoodRepository {
     int carbs = (product['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? (product['nutriments']?['carbohydrates_serving'] as num?)?.round() ?? 0;
     int fats = (product['nutriments']?['fat_100g'] as num?)?.round() ?? (product['nutriments']?['fat_serving'] as num?)?.round() ?? 0;
 
-    // Upsert by barcode if present; else by name+brand
     final existing = barcode != null
         ? await (_db.select(_db.foods)..where((f) => f.barcode.equals(barcode))).getSingleOrNull()
         : null;
@@ -384,6 +386,7 @@ final todaysMealsProvider = StreamProvider.autoDispose<List<(Meal, List<(MealIte
 
 final offSearchResultsProvider = FutureProvider.autoDispose.family<List<Food>, String>((ref, query) async {
   final repo = ref.read(foodRepositoryProvider);
+  if (query.isEmpty) return [];
   final ids = await repo.searchFoodsAndCache(query);
   if (ids.isEmpty) return [];
   final foodsList = await (repo._db.select(repo._db.foods)..where((f) => f.id.isIn(ids))).get();

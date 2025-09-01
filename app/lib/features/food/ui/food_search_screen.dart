@@ -11,11 +11,63 @@ class FoodSearchScreen extends ConsumerStatefulWidget {
 
 class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
   final _queryCtrl = TextEditingController();
+  String _mealType = 'breakfast';
 
   @override
   void dispose() {
     _queryCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _promptAdd(int foodId) async {
+    final qtyController = TextEditingController(text: '1');
+    final unitController = TextEditingController();
+    final result = await showDialog<(double qty, String? unit, String meal)>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add to Meal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButton<String>(
+              value: _mealType,
+              items: const [
+                DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                DropdownMenuItem(value: 'snack', child: Text('Snack')),
+              ],
+              onChanged: (v) => setState(() => _mealType = v ?? 'breakfast'),
+            ),
+            TextField(
+              controller: qtyController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Quantity'),
+            ),
+            TextField(
+              controller: unitController,
+              decoration: const InputDecoration(labelText: 'Unit (optional)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final q = double.tryParse(qtyController.text) ?? 1.0;
+              final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
+              Navigator.of(ctx).pop((q, u, _mealType));
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    final (qty, unit, meal) = result;
+    await ref.read(foodRepositoryProvider).addExistingFoodToMeal(foodId: foodId, mealType: meal, quantity: qty, unit: unit);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
   }
 
   @override
@@ -52,10 +104,13 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                   itemCount: foods.length,
                   itemBuilder: (ctx, i) {
                     final f = foods[i];
-                    return ListTile(
-                      title: Text(f.name),
-                      subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
-                      trailing: Text('${f.calories} kcal'),
+                    return Card(
+                      child: ListTile(
+                        title: Text(f.name),
+                        subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                        trailing: Text('${f.calories} kcal'),
+                        onTap: () => _promptAdd(f.id),
+                      ),
                     );
                   },
                 );

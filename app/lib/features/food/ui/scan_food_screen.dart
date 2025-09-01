@@ -11,6 +11,61 @@ class ScanFoodScreen extends ConsumerStatefulWidget {
 
 class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
   bool _handled = false;
+  String _mealType = 'breakfast';
+
+  Future<void> _promptAdd(int foodId) async {
+    final qtyController = TextEditingController(text: '1');
+    final unitController = TextEditingController();
+    final result = await showDialog<(double qty, String? unit, String meal)>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Add to Meal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: _mealType,
+                items: const [
+                  DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                ],
+                onChanged: (v) => setState(() => _mealType = v ?? 'breakfast'),
+              ),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+              TextField(
+                controller: unitController,
+                decoration: const InputDecoration(labelText: 'Unit (optional)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final q = double.tryParse(qtyController.text) ?? 1.0;
+                final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
+                Navigator.of(ctx).pop((q, u, _mealType));
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null) return;
+    final (qty, unit, meal) = result;
+    await ref.read(foodRepositoryProvider).addExistingFoodToMeal(foodId: foodId, mealType: meal, quantity: qty, unit: unit);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
+    Navigator.of(context).pop();
+  }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_handled) return;
@@ -28,8 +83,7 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
       setState(() => _handled = false);
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Found item: #$id')));
-    Navigator.of(context).pop();
+    await _promptAdd(id);
   }
 
   @override
