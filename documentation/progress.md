@@ -19,7 +19,7 @@
 - Ran code generation (build_runner) and analyzer; project is clean.
 
 ## Next
-- Milestone 1 completed: Onboarding + Profile/Goals settings.
+- Milestone 2 completed: Home Dashboard (read-only).
 
 ## Milestone 1 (Onboarding + Profile/Goals)
 - Drift schema: added `users` and `goals` tables; ACID transactions for saves.
@@ -33,3 +33,11 @@
   - Full form with validation, Sex (no "Other"), units toggle (persists immediately), and Save.
   - Reset button: clears users/goals/settings and routes back to onboarding.
 - Analyzer: clean; build verified on iOS simulator.
+
+## Milestone 2 (Home Dashboard - Read-only)
+- Macro rings: circular progress for Calories/Protein/Carbs/Fats against targets.
+- Responsive layout: Wrap used to avoid overflows on smaller widths.
+- Quick Actions: stubs for Log Food, Start Workout, Add Task with routes.
+- Today section: placeholders for tasks and workout.
+- Visual tweaks: visible ring background track and primary color.
+- Analyzer: clean; verified on iOS simulator.
