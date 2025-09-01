@@ -174,7 +174,14 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                     Card(
                       child: ListTile(
                         title: Text(f.name),
-                        subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
+                              Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                            Text('P ${f.proteinG}g • C ${f.carbsG}g • F ${f.fatsG}g'),
+                          ],
+                        ),
                         trailing: Text('${f.calories} kcal'),
                         onTap: () async {
                           final repo = ref.read(foodRepositoryProvider);
