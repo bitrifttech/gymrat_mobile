@@ -1359,6 +1359,75 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, Food> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('custom'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isCustomMeta = const VerificationMeta(
+    'isCustom',
+  );
+  @override
+  late final GeneratedColumn<bool> isCustom = GeneratedColumn<bool>(
+    'is_custom',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_custom" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _servingQtyMeta = const VerificationMeta(
+    'servingQty',
+  );
+  @override
+  late final GeneratedColumn<double> servingQty = GeneratedColumn<double>(
+    'serving_qty',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _servingUnitMeta = const VerificationMeta(
+    'servingUnit',
+  );
+  @override
+  late final GeneratedColumn<String> servingUnit = GeneratedColumn<String>(
+    'serving_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _proteinGMeta = const VerificationMeta(
     'proteinG',
   );
@@ -1422,6 +1491,12 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, Food> {
     name,
     brand,
     servingDesc,
+    barcode,
+    source,
+    remoteId,
+    isCustom,
+    servingQty,
+    servingUnit,
     proteinG,
     carbsG,
     fatsG,
@@ -1471,6 +1546,45 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, Food> {
         servingDesc.isAcceptableOrUnknown(
           data['serving_desc']!,
           _servingDescMeta,
+        ),
+      );
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    if (data.containsKey('is_custom')) {
+      context.handle(
+        _isCustomMeta,
+        isCustom.isAcceptableOrUnknown(data['is_custom']!, _isCustomMeta),
+      );
+    }
+    if (data.containsKey('serving_qty')) {
+      context.handle(
+        _servingQtyMeta,
+        servingQty.isAcceptableOrUnknown(data['serving_qty']!, _servingQtyMeta),
+      );
+    }
+    if (data.containsKey('serving_unit')) {
+      context.handle(
+        _servingUnitMeta,
+        servingUnit.isAcceptableOrUnknown(
+          data['serving_unit']!,
+          _servingUnitMeta,
         ),
       );
     }
@@ -1533,6 +1647,30 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, Food> {
         DriftSqlType.string,
         data['${effectivePrefix}serving_desc'],
       ),
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+      isCustom: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_custom'],
+      )!,
+      servingQty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}serving_qty'],
+      ),
+      servingUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}serving_unit'],
+      ),
       proteinG: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}protein_g'],
@@ -1568,6 +1706,12 @@ class Food extends DataClass implements Insertable<Food> {
   final String name;
   final String? brand;
   final String? servingDesc;
+  final String? barcode;
+  final String source;
+  final String? remoteId;
+  final bool isCustom;
+  final double? servingQty;
+  final String? servingUnit;
   final int proteinG;
   final int carbsG;
   final int fatsG;
@@ -1579,6 +1723,12 @@ class Food extends DataClass implements Insertable<Food> {
     required this.name,
     this.brand,
     this.servingDesc,
+    this.barcode,
+    required this.source,
+    this.remoteId,
+    required this.isCustom,
+    this.servingQty,
+    this.servingUnit,
     required this.proteinG,
     required this.carbsG,
     required this.fatsG,
@@ -1596,6 +1746,20 @@ class Food extends DataClass implements Insertable<Food> {
     }
     if (!nullToAbsent || servingDesc != null) {
       map['serving_desc'] = Variable<String>(servingDesc);
+    }
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    map['is_custom'] = Variable<bool>(isCustom);
+    if (!nullToAbsent || servingQty != null) {
+      map['serving_qty'] = Variable<double>(servingQty);
+    }
+    if (!nullToAbsent || servingUnit != null) {
+      map['serving_unit'] = Variable<String>(servingUnit);
     }
     map['protein_g'] = Variable<int>(proteinG);
     map['carbs_g'] = Variable<int>(carbsG);
@@ -1616,6 +1780,20 @@ class Food extends DataClass implements Insertable<Food> {
       servingDesc: servingDesc == null && nullToAbsent
           ? const Value.absent()
           : Value(servingDesc),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      source: Value(source),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+      isCustom: Value(isCustom),
+      servingQty: servingQty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(servingQty),
+      servingUnit: servingUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(servingUnit),
       proteinG: Value(proteinG),
       carbsG: Value(carbsG),
       fatsG: Value(fatsG),
@@ -1635,6 +1813,12 @@ class Food extends DataClass implements Insertable<Food> {
       name: serializer.fromJson<String>(json['name']),
       brand: serializer.fromJson<String?>(json['brand']),
       servingDesc: serializer.fromJson<String?>(json['servingDesc']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      source: serializer.fromJson<String>(json['source']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+      isCustom: serializer.fromJson<bool>(json['isCustom']),
+      servingQty: serializer.fromJson<double?>(json['servingQty']),
+      servingUnit: serializer.fromJson<String?>(json['servingUnit']),
       proteinG: serializer.fromJson<int>(json['proteinG']),
       carbsG: serializer.fromJson<int>(json['carbsG']),
       fatsG: serializer.fromJson<int>(json['fatsG']),
@@ -1651,6 +1835,12 @@ class Food extends DataClass implements Insertable<Food> {
       'name': serializer.toJson<String>(name),
       'brand': serializer.toJson<String?>(brand),
       'servingDesc': serializer.toJson<String?>(servingDesc),
+      'barcode': serializer.toJson<String?>(barcode),
+      'source': serializer.toJson<String>(source),
+      'remoteId': serializer.toJson<String?>(remoteId),
+      'isCustom': serializer.toJson<bool>(isCustom),
+      'servingQty': serializer.toJson<double?>(servingQty),
+      'servingUnit': serializer.toJson<String?>(servingUnit),
       'proteinG': serializer.toJson<int>(proteinG),
       'carbsG': serializer.toJson<int>(carbsG),
       'fatsG': serializer.toJson<int>(fatsG),
@@ -1665,6 +1855,12 @@ class Food extends DataClass implements Insertable<Food> {
     String? name,
     Value<String?> brand = const Value.absent(),
     Value<String?> servingDesc = const Value.absent(),
+    Value<String?> barcode = const Value.absent(),
+    String? source,
+    Value<String?> remoteId = const Value.absent(),
+    bool? isCustom,
+    Value<double?> servingQty = const Value.absent(),
+    Value<String?> servingUnit = const Value.absent(),
     int? proteinG,
     int? carbsG,
     int? fatsG,
@@ -1676,6 +1872,12 @@ class Food extends DataClass implements Insertable<Food> {
     name: name ?? this.name,
     brand: brand.present ? brand.value : this.brand,
     servingDesc: servingDesc.present ? servingDesc.value : this.servingDesc,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    source: source ?? this.source,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    isCustom: isCustom ?? this.isCustom,
+    servingQty: servingQty.present ? servingQty.value : this.servingQty,
+    servingUnit: servingUnit.present ? servingUnit.value : this.servingUnit,
     proteinG: proteinG ?? this.proteinG,
     carbsG: carbsG ?? this.carbsG,
     fatsG: fatsG ?? this.fatsG,
@@ -1691,6 +1893,16 @@ class Food extends DataClass implements Insertable<Food> {
       servingDesc: data.servingDesc.present
           ? data.servingDesc.value
           : this.servingDesc,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      source: data.source.present ? data.source.value : this.source,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
+      servingQty: data.servingQty.present
+          ? data.servingQty.value
+          : this.servingQty,
+      servingUnit: data.servingUnit.present
+          ? data.servingUnit.value
+          : this.servingUnit,
       proteinG: data.proteinG.present ? data.proteinG.value : this.proteinG,
       carbsG: data.carbsG.present ? data.carbsG.value : this.carbsG,
       fatsG: data.fatsG.present ? data.fatsG.value : this.fatsG,
@@ -1707,6 +1919,12 @@ class Food extends DataClass implements Insertable<Food> {
           ..write('name: $name, ')
           ..write('brand: $brand, ')
           ..write('servingDesc: $servingDesc, ')
+          ..write('barcode: $barcode, ')
+          ..write('source: $source, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('isCustom: $isCustom, ')
+          ..write('servingQty: $servingQty, ')
+          ..write('servingUnit: $servingUnit, ')
           ..write('proteinG: $proteinG, ')
           ..write('carbsG: $carbsG, ')
           ..write('fatsG: $fatsG, ')
@@ -1723,6 +1941,12 @@ class Food extends DataClass implements Insertable<Food> {
     name,
     brand,
     servingDesc,
+    barcode,
+    source,
+    remoteId,
+    isCustom,
+    servingQty,
+    servingUnit,
     proteinG,
     carbsG,
     fatsG,
@@ -1738,6 +1962,12 @@ class Food extends DataClass implements Insertable<Food> {
           other.name == this.name &&
           other.brand == this.brand &&
           other.servingDesc == this.servingDesc &&
+          other.barcode == this.barcode &&
+          other.source == this.source &&
+          other.remoteId == this.remoteId &&
+          other.isCustom == this.isCustom &&
+          other.servingQty == this.servingQty &&
+          other.servingUnit == this.servingUnit &&
           other.proteinG == this.proteinG &&
           other.carbsG == this.carbsG &&
           other.fatsG == this.fatsG &&
@@ -1751,6 +1981,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
   final Value<String> name;
   final Value<String?> brand;
   final Value<String?> servingDesc;
+  final Value<String?> barcode;
+  final Value<String> source;
+  final Value<String?> remoteId;
+  final Value<bool> isCustom;
+  final Value<double?> servingQty;
+  final Value<String?> servingUnit;
   final Value<int> proteinG;
   final Value<int> carbsG;
   final Value<int> fatsG;
@@ -1762,6 +1998,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
     this.name = const Value.absent(),
     this.brand = const Value.absent(),
     this.servingDesc = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.source = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.isCustom = const Value.absent(),
+    this.servingQty = const Value.absent(),
+    this.servingUnit = const Value.absent(),
     this.proteinG = const Value.absent(),
     this.carbsG = const Value.absent(),
     this.fatsG = const Value.absent(),
@@ -1774,6 +2016,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
     required String name,
     this.brand = const Value.absent(),
     this.servingDesc = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.source = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.isCustom = const Value.absent(),
+    this.servingQty = const Value.absent(),
+    this.servingUnit = const Value.absent(),
     this.proteinG = const Value.absent(),
     this.carbsG = const Value.absent(),
     this.fatsG = const Value.absent(),
@@ -1787,6 +2035,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
     Expression<String>? name,
     Expression<String>? brand,
     Expression<String>? servingDesc,
+    Expression<String>? barcode,
+    Expression<String>? source,
+    Expression<String>? remoteId,
+    Expression<bool>? isCustom,
+    Expression<double>? servingQty,
+    Expression<String>? servingUnit,
     Expression<int>? proteinG,
     Expression<int>? carbsG,
     Expression<int>? fatsG,
@@ -1799,6 +2053,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
       if (name != null) 'name': name,
       if (brand != null) 'brand': brand,
       if (servingDesc != null) 'serving_desc': servingDesc,
+      if (barcode != null) 'barcode': barcode,
+      if (source != null) 'source': source,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (isCustom != null) 'is_custom': isCustom,
+      if (servingQty != null) 'serving_qty': servingQty,
+      if (servingUnit != null) 'serving_unit': servingUnit,
       if (proteinG != null) 'protein_g': proteinG,
       if (carbsG != null) 'carbs_g': carbsG,
       if (fatsG != null) 'fats_g': fatsG,
@@ -1813,6 +2073,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
     Value<String>? name,
     Value<String?>? brand,
     Value<String?>? servingDesc,
+    Value<String?>? barcode,
+    Value<String>? source,
+    Value<String?>? remoteId,
+    Value<bool>? isCustom,
+    Value<double?>? servingQty,
+    Value<String?>? servingUnit,
     Value<int>? proteinG,
     Value<int>? carbsG,
     Value<int>? fatsG,
@@ -1825,6 +2091,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
       name: name ?? this.name,
       brand: brand ?? this.brand,
       servingDesc: servingDesc ?? this.servingDesc,
+      barcode: barcode ?? this.barcode,
+      source: source ?? this.source,
+      remoteId: remoteId ?? this.remoteId,
+      isCustom: isCustom ?? this.isCustom,
+      servingQty: servingQty ?? this.servingQty,
+      servingUnit: servingUnit ?? this.servingUnit,
       proteinG: proteinG ?? this.proteinG,
       carbsG: carbsG ?? this.carbsG,
       fatsG: fatsG ?? this.fatsG,
@@ -1850,6 +2122,24 @@ class FoodsCompanion extends UpdateCompanion<Food> {
     }
     if (servingDesc.present) {
       map['serving_desc'] = Variable<String>(servingDesc.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    if (isCustom.present) {
+      map['is_custom'] = Variable<bool>(isCustom.value);
+    }
+    if (servingQty.present) {
+      map['serving_qty'] = Variable<double>(servingQty.value);
+    }
+    if (servingUnit.present) {
+      map['serving_unit'] = Variable<String>(servingUnit.value);
     }
     if (proteinG.present) {
       map['protein_g'] = Variable<int>(proteinG.value);
@@ -1877,6 +2167,12 @@ class FoodsCompanion extends UpdateCompanion<Food> {
           ..write('name: $name, ')
           ..write('brand: $brand, ')
           ..write('servingDesc: $servingDesc, ')
+          ..write('barcode: $barcode, ')
+          ..write('source: $source, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('isCustom: $isCustom, ')
+          ..write('servingQty: $servingQty, ')
+          ..write('servingUnit: $servingUnit, ')
           ..write('proteinG: $proteinG, ')
           ..write('carbsG: $carbsG, ')
           ..write('fatsG: $fatsG, ')
@@ -3921,6 +4217,12 @@ typedef $$FoodsTableCreateCompanionBuilder =
       required String name,
       Value<String?> brand,
       Value<String?> servingDesc,
+      Value<String?> barcode,
+      Value<String> source,
+      Value<String?> remoteId,
+      Value<bool> isCustom,
+      Value<double?> servingQty,
+      Value<String?> servingUnit,
       Value<int> proteinG,
       Value<int> carbsG,
       Value<int> fatsG,
@@ -3934,6 +4236,12 @@ typedef $$FoodsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> brand,
       Value<String?> servingDesc,
+      Value<String?> barcode,
+      Value<String> source,
+      Value<String?> remoteId,
+      Value<bool> isCustom,
+      Value<double?> servingQty,
+      Value<String?> servingUnit,
       Value<int> proteinG,
       Value<int> carbsG,
       Value<int> fatsG,
@@ -4006,6 +4314,36 @@ class $$FoodsTableFilterComposer extends Composer<_$AppDatabase, $FoodsTable> {
 
   ColumnFilters<String> get servingDesc => $composableBuilder(
     column: $table.servingDesc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get servingQty => $composableBuilder(
+    column: $table.servingQty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get servingUnit => $composableBuilder(
+    column: $table.servingUnit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4112,6 +4450,36 @@ class $$FoodsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get servingQty => $composableBuilder(
+    column: $table.servingQty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get servingUnit => $composableBuilder(
+    column: $table.servingUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get proteinG => $composableBuilder(
     column: $table.proteinG,
     builder: (column) => ColumnOrderings(column),
@@ -4181,6 +4549,28 @@ class $$FoodsTableAnnotationComposer
 
   GeneratedColumn<String> get servingDesc => $composableBuilder(
     column: $table.servingDesc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCustom =>
+      $composableBuilder(column: $table.isCustom, builder: (column) => column);
+
+  GeneratedColumn<double> get servingQty => $composableBuilder(
+    column: $table.servingQty,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get servingUnit => $composableBuilder(
+    column: $table.servingUnit,
     builder: (column) => column,
   );
 
@@ -4281,6 +4671,12 @@ class $$FoodsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> brand = const Value.absent(),
                 Value<String?> servingDesc = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<bool> isCustom = const Value.absent(),
+                Value<double?> servingQty = const Value.absent(),
+                Value<String?> servingUnit = const Value.absent(),
                 Value<int> proteinG = const Value.absent(),
                 Value<int> carbsG = const Value.absent(),
                 Value<int> fatsG = const Value.absent(),
@@ -4292,6 +4688,12 @@ class $$FoodsTableTableManager
                 name: name,
                 brand: brand,
                 servingDesc: servingDesc,
+                barcode: barcode,
+                source: source,
+                remoteId: remoteId,
+                isCustom: isCustom,
+                servingQty: servingQty,
+                servingUnit: servingUnit,
                 proteinG: proteinG,
                 carbsG: carbsG,
                 fatsG: fatsG,
@@ -4305,6 +4707,12 @@ class $$FoodsTableTableManager
                 required String name,
                 Value<String?> brand = const Value.absent(),
                 Value<String?> servingDesc = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<bool> isCustom = const Value.absent(),
+                Value<double?> servingQty = const Value.absent(),
+                Value<String?> servingUnit = const Value.absent(),
                 Value<int> proteinG = const Value.absent(),
                 Value<int> carbsG = const Value.absent(),
                 Value<int> fatsG = const Value.absent(),
@@ -4316,6 +4724,12 @@ class $$FoodsTableTableManager
                 name: name,
                 brand: brand,
                 servingDesc: servingDesc,
+                barcode: barcode,
+                source: source,
+                remoteId: remoteId,
+                isCustom: isCustom,
+                servingQty: servingQty,
+                servingUnit: servingUnit,
                 proteinG: proteinG,
                 carbsG: carbsG,
                 fatsG: fatsG,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class FoodLogScreen extends ConsumerStatefulWidget {
   const FoodLogScreen({super.key});
@@ -119,7 +120,21 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     final perMeal = ref.watch(todayPerMealTotalsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Food')),
+      appBar: AppBar(
+        title: const Text('Log Food'),
+        actions: [
+          IconButton(
+            tooltip: 'Scan barcode',
+            onPressed: () => context.pushNamed('food.scan'),
+            icon: const Icon(Icons.qr_code_scanner),
+          ),
+          IconButton(
+            tooltip: 'Search foods',
+            onPressed: () => context.pushNamed('food.search'),
+            icon: const Icon(Icons.search),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

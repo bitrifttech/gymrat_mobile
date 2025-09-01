@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import 'package:app/core/db_provider.dart';
 import 'package:app/data/db/app_database.dart';
+import 'package:dio/dio.dart';
 
 class MacroTotals {
   const MacroTotals({
@@ -34,8 +37,9 @@ class MealTotals {
 }
 
 class FoodRepository {
-  FoodRepository(this._db);
+  FoodRepository(this._db) : _dio = Dio(BaseOptions(baseUrl: 'https://world.openfoodfacts.org')); 
   final AppDatabase _db;
+  final Dio _dio;
 
   DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
@@ -69,6 +73,8 @@ class FoodRepository {
       proteinG: Value(proteinG),
       carbsG: Value(carbsG),
       fatsG: Value(fatsG),
+      isCustom: const Value(true),
+      source: const Value('custom'),
     ));
   }
 
@@ -225,7 +231,6 @@ class FoodRepository {
 
   Stream<List<(Meal, List<(MealItem, Food)>)>> watchMealsForDay(DateTime date) {
     final day = _dateOnly(date);
-    // We watch meals for the day and join with items + foods via a manual query per meal for simplicity.
     final mealsStream = (_db.select(_db.meals)..where((m) => m.date.equals(day))).watch();
     return mealsStream.asyncMap((meals) async {
       final result = <(Meal, List<(MealItem, Food)>)>[];
@@ -245,7 +250,6 @@ class FoodRepository {
   }
 
   Future<void> updateItemQuantity({required int itemId, required double quantity}) async {
-    // Recompute macros proportionally from original food values
     final item = await (_db.select(_db.mealItems)..where((i) => i.id.equals(itemId))).getSingle();
     final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
     final newCalories = (food.calories * quantity).round();
@@ -263,6 +267,96 @@ class FoodRepository {
 
   Future<void> deleteMealItem(int itemId) async {
     await (_db.delete(_db.mealItems)..where((i) => i.id.equals(itemId))).go();
+  }
+
+  // --- Open Food Facts integration ---
+
+  Future<int> _cacheOrUpdateOFFFood(Map<String, dynamic> p) async {
+    final userId = await _getCurrentUserId();
+    final barcode = p['code'] as String?;
+    final product = p['product'] as Map<String, dynamic>?;
+    if (product == null) throw StateError('Invalid product payload');
+
+    String name = (product['product_name'] as String?)?.trim() ?? 'Unknown';
+    String? brand = (product['brands'] as String?)?.split(',').first.trim();
+    String? servingDesc = (product['serving_size'] as String?)?.trim();
+    double? servingQty;
+    String? servingUnit;
+    if (servingDesc != null) {
+      // naive parse like "30 g" → qty=30, unit=g
+      final parts = servingDesc.split(' ');
+      if (parts.length >= 2) {
+        servingQty = double.tryParse(parts[0]);
+        servingUnit = parts[1];
+      }
+    }
+
+    int kcal = (product['nutriments']?['energy-kcal_100g'] as num?)?.round() ?? (product['nutriments']?['energy-kcal_serving'] as num?)?.round() ?? 0;
+    int protein = (product['nutriments']?['proteins_100g'] as num?)?.round() ?? (product['nutriments']?['proteins_serving'] as num?)?.round() ?? 0;
+    int carbs = (product['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? (product['nutriments']?['carbohydrates_serving'] as num?)?.round() ?? 0;
+    int fats = (product['nutriments']?['fat_100g'] as num?)?.round() ?? (product['nutriments']?['fat_serving'] as num?)?.round() ?? 0;
+
+    // Upsert by barcode if present; else by name+brand
+    final existing = barcode != null
+        ? await (_db.select(_db.foods)..where((f) => f.barcode.equals(barcode))).getSingleOrNull()
+        : null;
+    final companion = FoodsCompanion(
+      userId: Value(userId),
+      name: Value(name),
+      brand: Value(brand),
+      servingDesc: Value(servingDesc),
+      barcode: Value(barcode),
+      source: const Value('off'),
+      remoteId: Value(barcode),
+      isCustom: const Value(false),
+      servingQty: Value(servingQty),
+      servingUnit: Value(servingUnit),
+      calories: Value(kcal),
+      proteinG: Value(protein),
+      carbsG: Value(carbs),
+      fatsG: Value(fats),
+    );
+    if (existing == null) {
+      return _db.into(_db.foods).insert(companion);
+    } else {
+      await (_db.update(_db.foods)..where((f) => f.id.equals(existing.id))).write(companion);
+      return existing.id;
+    }
+  }
+
+  Future<int?> fetchByBarcodeAndCache(String barcode) async {
+    try {
+      final res = await _dio.get('/api/v2/product/$barcode.json');
+      final data = res.data is String ? jsonDecode(res.data as String) : res.data as Map<String, dynamic>;
+      if (data['status'] == 1) {
+        return _cacheOrUpdateOFFFood({'code': barcode, 'product': data['product'] as Map<String, dynamic>});
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<int>> searchFoodsAndCache(String query, {int page = 1, int pageSize = 10}) async {
+    try {
+      final res = await _dio.get('/cgi/search.pl', queryParameters: {
+        'search_terms': query,
+        'search_simple': 1,
+        'json': 1,
+        'page': page,
+        'page_size': pageSize,
+      });
+      final data = res.data is String ? jsonDecode(res.data as String) : res.data as Map<String, dynamic>;
+      final products = (data['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final ids = <int>[];
+      for (final p in products) {
+        final id = await _cacheOrUpdateOFFFood({'code': p['code'], 'product': p});
+        ids.add(id);
+      }
+      return ids;
+    } catch (_) {
+      return [];
+    }
   }
 }
 
@@ -286,4 +380,12 @@ final todayPerMealTotalsProvider = StreamProvider<List<MealTotals>>((ref) {
 final todaysMealsProvider = StreamProvider.autoDispose<List<(Meal, List<(MealItem, Food)>)>>((ref) {
   final repo = ref.read(foodRepositoryProvider);
   return repo.watchMealsForDay(DateTime.now());
+});
+
+final offSearchResultsProvider = FutureProvider.autoDispose.family<List<Food>, String>((ref, query) async {
+  final repo = ref.read(foodRepositoryProvider);
+  final ids = await repo.searchFoodsAndCache(query);
+  if (ids.isEmpty) return [];
+  final foodsList = await (repo._db.select(repo._db.foods)..where((f) => f.id.isIn(ids))).get();
+  return foodsList;
 });

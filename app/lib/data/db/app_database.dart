@@ -43,6 +43,14 @@ class Foods extends Table {
   TextColumn get name => text()();
   TextColumn get brand => text().nullable()();
   TextColumn get servingDesc => text().nullable()();
+  // New metadata for external sources
+  TextColumn get barcode => text().nullable()();
+  TextColumn get source => text().withDefault(const Constant('custom'))(); // custom|off
+  TextColumn get remoteId => text().nullable()();
+  BoolColumn get isCustom => boolean().withDefault(const Constant(true))();
+  RealColumn get servingQty => real().nullable()();
+  TextColumn get servingUnit => text().nullable()();
+  // Macros per serving
   IntColumn get proteinG => integer().withDefault(const Constant(0))();
   IntColumn get carbsG => integer().withDefault(const Constant(0))();
   IntColumn get fatsG => integer().withDefault(const Constant(0))();
@@ -77,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -89,6 +97,14 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(foods);
             await m.createTable(meals);
             await m.createTable(mealItems);
+          }
+          if (from < 3) {
+            await m.addColumn(foods, foods.barcode);
+            await m.addColumn(foods, foods.source);
+            await m.addColumn(foods, foods.remoteId);
+            await m.addColumn(foods, foods.isCustom);
+            await m.addColumn(foods, foods.servingQty);
+            await m.addColumn(foods, foods.servingUnit);
           }
         },
       );
