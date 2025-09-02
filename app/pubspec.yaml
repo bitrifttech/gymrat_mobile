@@ -45,6 +45,8 @@ dependencies:
   drift_dev: ^2.28.1
   path: ^1.9.1
   mobile_scanner: ^5.2.3
+  vibration: ^1.9.0
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:

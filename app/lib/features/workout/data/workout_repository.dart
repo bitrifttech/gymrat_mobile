@@ -171,12 +171,14 @@ class WorkoutRepository {
     required int setsCount,
     int? repsMin,
     int? repsMax,
+    int? restSeconds,
   }) async {
     await (_db.update(_db.templateExercises)..where((te) => te.id.equals(templateExerciseId))).write(
       TemplateExercisesCompanion(
         setsCount: Value(setsCount),
         repsMin: Value(repsMin),
         repsMax: Value(repsMax),
+        restSeconds: restSeconds == null ? const Value.absent() : Value(restSeconds),
       ),
     );
   }

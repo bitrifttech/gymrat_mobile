@@ -136,6 +136,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                                 final setsCtrl = TextEditingController(text: te.setsCount.toString());
                                 final repsMinCtrl = TextEditingController(text: te.repsMin?.toString() ?? '');
                                 final repsMaxCtrl = TextEditingController(text: te.repsMax?.toString() ?? '');
+                                final restCtrl = TextEditingController(text: te.restSeconds.toString());
                                 return Card(
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
@@ -169,17 +170,31 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                                                 decoration: const InputDecoration(labelText: 'Reps max'),
                                               ),
                                             ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                controller: restCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(labelText: 'Rest (seconds)'),
+                                              ),
+                                            ),
                                             const SizedBox(width: 8),
                                             ElevatedButton(
                                               onPressed: () async {
                                                 final sets = int.tryParse(setsCtrl.text) ?? 3;
                                                 final rmin = repsMinCtrl.text.trim().isEmpty ? null : int.tryParse(repsMinCtrl.text.trim());
                                                 final rmax = repsMaxCtrl.text.trim().isEmpty ? null : int.tryParse(repsMaxCtrl.text.trim());
+                                                final rest = restCtrl.text.trim().isEmpty ? null : int.tryParse(restCtrl.text.trim());
                                                 await ref.read(workoutRepositoryProvider).updateTemplateExerciseTargets(
                                                       templateExerciseId: te.id,
                                                       setsCount: sets,
                                                       repsMin: rmin,
                                                       repsMax: rmax,
+                                                      restSeconds: rest,
                                                     );
                                                 if (!ctx.mounted) return;
                                                 ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Saved')));

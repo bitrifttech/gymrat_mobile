@@ -128,6 +128,7 @@ class TemplateExercises extends Table {
   IntColumn get setsCount => integer().withDefault(const Constant(3))();
   IntColumn get repsMin => integer().nullable()();
   IntColumn get repsMax => integer().nullable()();
+  IntColumn get restSeconds => integer().withDefault(const Constant(90))();
 }
 
 class WorkoutSchedule extends Table {
@@ -158,7 +159,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -195,6 +196,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(templateExercises, templateExercises.setsCount);
             await m.addColumn(templateExercises, templateExercises.repsMin);
             await m.addColumn(templateExercises, templateExercises.repsMax);
+          }
+          if (from < 7) {
+            await m.addColumn(templateExercises, templateExercises.restSeconds);
           }
         },
       );

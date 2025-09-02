@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -12,11 +15,70 @@ class ActiveWorkoutScreen extends ConsumerStatefulWidget {
 
 class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   final _exerciseCtrl = TextEditingController();
+  final Map<int, Timer?> _timersByWorkoutExerciseId = {};
+  final Map<int, int> _remainingSecondsByWorkoutExerciseId = {};
+  final FlutterLocalNotificationsPlugin _notifier = FlutterLocalNotificationsPlugin();
+
+  @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(android: android, iOS: ios);
+    await _notifier.initialize(initSettings);
+  }
 
   @override
   void dispose() {
     _exerciseCtrl.dispose();
+    for (final t in _timersByWorkoutExerciseId.values) {
+      t?.cancel();
+    }
     super.dispose();
+  }
+
+  Future<void> _alertRestComplete() async {
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(pattern: [0, 150, 100, 150]);
+    }
+    const android = AndroidNotificationDetails(
+      'rest_timer',
+      'Rest Timer',
+      channelDescription: 'Alerts when rest timer completes',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+    const ios = DarwinNotificationDetails(presentSound: true, presentAlert: true, presentBadge: false);
+    const details = NotificationDetails(android: android, iOS: ios);
+    await _notifier.show(0, 'Rest complete', 'Time to lift!', details);
+  }
+
+  void _startRestTimer({required int workoutExerciseId, required int seconds}) {
+    _timersByWorkoutExerciseId[workoutExerciseId]?.cancel();
+    setState(() {
+      _remainingSecondsByWorkoutExerciseId[workoutExerciseId] = seconds;
+    });
+    _timersByWorkoutExerciseId[workoutExerciseId] = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      final current = _remainingSecondsByWorkoutExerciseId[workoutExerciseId] ?? 0;
+      if (current <= 1) {
+        timer.cancel();
+        setState(() {
+          _remainingSecondsByWorkoutExerciseId[workoutExerciseId] = 0;
+        });
+        await _alertRestComplete();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
+      } else {
+        setState(() {
+          _remainingSecondsByWorkoutExerciseId[workoutExerciseId] = current - 1;
+        });
+      }
+    });
   }
 
   @override
@@ -100,7 +162,26 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                         children: [
                                           const Icon(Icons.fitness_center),
                                           const SizedBox(width: 8),
-                                          Text(ex.name, style: Theme.of(context).textTheme.titleMedium),
+                                          Expanded(child: Text(ex.name, style: Theme.of(context).textTheme.titleMedium)),
+                                          Builder(builder: (ctx) {
+                                            final t = targetsMap[ex.name];
+                                            final restSec = t?.restSeconds ?? 90;
+                                            final remaining = _remainingSecondsByWorkoutExerciseId[we.id] ?? 0;
+                                            return Row(
+                                              children: [
+                                                if (remaining > 0)
+                                                  Text('${Duration(seconds: remaining).toString().split('.').first.padLeft(8, '0')}'),
+                                                const SizedBox(width: 8),
+                                                OutlinedButton.icon(
+                                                  onPressed: () {
+                                                    _startRestTimer(workoutExerciseId: we.id, seconds: restSec);
+                                                  },
+                                                  icon: const Icon(Icons.timer),
+                                                  label: Text(remaining > 0 ? 'Restart Rest' : 'Start Rest (${restSec}s)'),
+                                                ),
+                                              ],
+                                            );
+                                          }),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
