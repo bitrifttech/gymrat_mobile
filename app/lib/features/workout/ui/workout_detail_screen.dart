@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class WorkoutDetailScreen extends ConsumerWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
@@ -26,6 +27,16 @@ class WorkoutDetailScreen extends ConsumerWidget {
                 onPressed: () {
                   FocusScope.of(ctx).unfocus();
                   ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Changes saved')));
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.restart_alt),
+                tooltip: 'Reset workout (start over)',
+                onPressed: () async {
+                  await repo.resetWorkoutFrom(workoutId);
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset. New session started.')));
+                  context.goNamed('workout.active');
                 },
               ),
               IconButton(

@@ -372,6 +372,20 @@ class WorkoutRepository {
       const WorkoutsCompanion(finishedAt: Value(null)),
     );
   }
+
+  Future<int> resetWorkoutFrom(int oldWorkoutId) async {
+    final old = await (_db.select(_db.workouts)..where((w) => w.id.equals(oldWorkoutId))).getSingle();
+    final newWorkoutId = await startWorkout(name: old.name, sourceTemplateId: old.sourceTemplateId);
+    final oldExercises = await (_db.select(_db.workoutExercises)
+          ..where((we) => we.workoutId.equals(oldWorkoutId))
+          ..orderBy([(we) => OrderingTerm.asc(we.orderIndex)]))
+        .get();
+    for (final we in oldExercises) {
+      final ex = await (_db.select(_db.exercises)..where((e) => e.id.equals(we.exerciseId))).getSingle();
+      await addExerciseToWorkout(workoutId: newWorkoutId, exerciseName: ex.name);
+    }
+    return newWorkoutId;
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
