@@ -373,6 +373,10 @@ class WorkoutRepository {
     );
   }
 
+  Future<void> deleteWorkout(int workoutId) async {
+    await (_db.delete(_db.workouts)..where((w) => w.id.equals(workoutId))).go();
+  }
+
   Future<int> resetWorkoutFrom(int oldWorkoutId) async {
     final old = await (_db.select(_db.workouts)..where((w) => w.id.equals(oldWorkoutId))).getSingle();
     final newWorkoutId = await startWorkout(name: old.name, sourceTemplateId: old.sourceTemplateId);

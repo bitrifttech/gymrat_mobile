@@ -108,10 +108,24 @@ class HomeScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.check_circle, color: Colors.green),
                           title: Text('Today’s Workout: ${tw.name ?? 'Workout'} (Completed)'),
-                          trailing: IconButton(
-                            tooltip: 'Edit',
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => context.push('/workout/detail/${tw.id}'),
+                          trailing: Wrap(
+                            spacing: 8,
+                            children: [
+                              IconButton(
+                                tooltip: 'Edit',
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => context.push('/workout/detail/${tw.id}'),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  await ref.read(workoutRepositoryProvider).deleteWorkout(tw.id);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout deleted')));
+                                },
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -126,7 +140,21 @@ class HomeScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.play_circle_fill),
                           title: Text('Continue Workout: ${wk.name ?? 'Workout'}'),
-                          trailing: TextButton(onPressed: () => context.pushNamed('workout.active'), child: const Text('Continue')),
+                          trailing: Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton(onPressed: () => context.pushNamed('workout.active'), child: const Text('Continue')),
+                              IconButton(
+                                tooltip: 'Delete',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  await ref.read(workoutRepositoryProvider).deleteWorkout(wk.id);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout deleted')));
+                                },
+                              ),
+                            ],
+                          ),
                         );
                       }
                       return scheduledTemplate.when(
