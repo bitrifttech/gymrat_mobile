@@ -17,6 +17,7 @@ class HomeScreen extends ConsumerWidget {
     final activeWorkout = ref.watch(activeWorkoutProvider);
     final isCompletedToday = ref.watch(todaysScheduledWorkoutCompletedProvider);
     final todaysWorkoutAny = ref.watch(todaysWorkoutAnyProvider);
+    final todaysScheduledWorkoutAny = ref.watch(todaysScheduledWorkoutAnyProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('GymRat'),
@@ -116,14 +117,20 @@ class HomeScreen extends ConsumerWidget {
                                 icon: const Icon(Icons.edit),
                                 onPressed: () => context.push('/workout/detail/${tw.id}'),
                               ),
-                              IconButton(
-                                tooltip: 'Delete',
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () async {
-                                  await ref.read(workoutRepositoryProvider).deleteWorkout(tw.id);
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout deleted')));
-                                },
+                              todaysScheduledWorkoutAny.when(
+                                loading: () => const SizedBox.shrink(),
+                                error: (e, st) => const SizedBox.shrink(),
+                                data: (sw) => IconButton(
+                                  tooltip: 'Delete',
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: sw == null
+                                      ? null
+                                      : () async {
+                                          await ref.read(workoutRepositoryProvider).deleteTodaysScheduledWorkouts();
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout deleted')));
+                                        },
+                                ),
                               ),
                             ],
                           ),

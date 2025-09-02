@@ -403,6 +403,43 @@ class WorkoutRepository {
     }
     return newWorkoutId;
   }
+
+  Stream<Workout?> watchTodaysScheduledWorkoutAnyStatus() {
+    final today = _dateOnly(DateTime.now());
+    final tomorrow = today.add(const Duration(days: 1));
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      final sched$ = (_db.select(_db.workoutSchedule)
+            ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(today.weekday))
+            ..limit(1))
+          .watchSingleOrNull();
+      return sched$.asyncExpand((sched) {
+        if (sched == null) return Stream<Workout?>.value(null);
+        final q = (_db.select(_db.workouts)
+          ..where((w) => w.sourceTemplateId.equals(sched.templateId) & w.startedAt.isBiggerOrEqualValue(today) & w.startedAt.isSmallerThanValue(tomorrow))
+          ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
+          ..limit(1));
+        return q.watchSingleOrNull();
+      });
+    });
+  }
+
+  Future<void> deleteTodaysScheduledWorkouts() async {
+    final userId = await _getCurrentUserId();
+    final today = _dateOnly(DateTime.now());
+    final tomorrow = today.add(const Duration(days: 1));
+    final sched = await (_db.select(_db.workoutSchedule)
+          ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(today.weekday))
+          ..limit(1))
+        .getSingleOrNull();
+    if (sched == null) return;
+    final list = await (_db.select(_db.workouts)
+          ..where((w) => w.sourceTemplateId.equals(sched.templateId) & w.startedAt.isBiggerOrEqualValue(today) & w.startedAt.isSmallerThanValue(tomorrow)))
+        .get();
+    for (final w in list) {
+      await deleteWorkout(w.id);
+    }
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -452,4 +489,8 @@ final todaysScheduledWorkoutCompletedProvider = StreamProvider<bool>((ref) {
 
 final todaysWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
   return ref.read(workoutRepositoryProvider).watchTodaysWorkoutAnyStatus();
+});
+
+final todaysScheduledWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
+  return ref.read(workoutRepositoryProvider).watchTodaysScheduledWorkoutAnyStatus();
 });
