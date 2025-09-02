@@ -265,16 +265,16 @@ class WorkoutRepository {
             ..limit(1))
           .watchSingleOrNull();
       final finished$ = (_db.select(_db.workouts)
-            ..where((w) => w.finishedAt.isNotNull()))
+            ..where((w) => w.finishedAt.isNotNull() & w.userId.equals(userId)))
           .watch();
       return sched$.asyncExpand((sched) {
         return finished$.map((list) {
+          if (sched == null) return false; // no schedule => not completed
           for (final w in list) {
             final started = w.startedAt;
-            if (started.isAfter(today.subtract(const Duration(seconds: 1))) && started.isBefore(tomorrow)) {
-              if (sched == null) return true; // any finished today counts
-              if (w.sourceTemplateId != null && w.sourceTemplateId == sched.templateId) return true;
-            }
+            final isToday = started.isAfter(today.subtract(const Duration(milliseconds: 1))) && started.isBefore(tomorrow);
+            if (!isToday) continue;
+            if (w.sourceTemplateId != null && w.sourceTemplateId == sched.templateId) return true;
           }
           return false;
         });
