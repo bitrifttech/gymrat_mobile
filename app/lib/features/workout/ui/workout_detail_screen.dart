@@ -52,21 +52,35 @@ class WorkoutDetailScreen extends ConsumerWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.restart_alt),
-                tooltip: 'Reset workout (start over)',
+                tooltip: 'Restart workout',
                 onPressed: () async {
-                  await repo.resetWorkoutFrom(workoutId);
+                  final choice = await showDialog<bool>(
+                    context: ctx,
+                    builder: (dCtx) => AlertDialog(
+                      title: const Text('Restart workout?'),
+                      content: const Text('Keep previous values?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dCtx).pop(false),
+                          child: const Text('No (Clear)')),
+                        TextButton(
+                          onPressed: () => Navigator.of(dCtx).pop(true),
+                          child: const Text('Yes (Keep)')),
+                      ],
+                    ),
+                  );
+                  if (choice == null) return;
+                  if (choice) {
+                    await repo.restartWorkoutFrom(workoutId);
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout restarted (kept values)')));
+                  } else {
+                    await repo.resetWorkoutFrom(workoutId);
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset (cleared values)')));
+                  }
                   if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset. New session started.')));
                   context.goNamed('workout.active');
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Restart (keep values)',
-                onPressed: () async {
-                  await repo.restartWorkoutFrom(workoutId);
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout restarted')));
                 },
               ),
             ],
