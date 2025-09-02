@@ -333,7 +333,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                         _stopElapsedTimer();
                         await ref.read(workoutRepositoryProvider).finishWorkout(w.id);
                         if (!context.mounted) return;
-                        context.goNamed('home');
+                        context.push('/workout/summary/${w.id}');
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout saved and completed')));
                       },
                       icon: const Icon(Icons.check),

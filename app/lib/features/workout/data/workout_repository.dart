@@ -21,6 +21,33 @@ class BestOneRm {
   final double oneRm;
 }
 
+class WorkoutExerciseSummary {
+  const WorkoutExerciseSummary({required this.exerciseName, required this.setsCount, required this.tonnage});
+  final String exerciseName;
+  final int setsCount;
+  final double tonnage;
+}
+
+class WorkoutSummaryData {
+  const WorkoutSummaryData({
+    required this.workout,
+    required this.totalSets,
+    required this.totalTonnage,
+    required this.exercises,
+  });
+  final Workout workout;
+  final int totalSets;
+  final double totalTonnage;
+  final List<WorkoutExerciseSummary> exercises;
+}
+
+class RecentPr {
+  const RecentPr({required this.exerciseName, required this.oneRm, required this.date});
+  final String exerciseName;
+  final double oneRm;
+  final DateTime date;
+}
+
 class WorkoutRepository {
   WorkoutRepository(this._db);
   final AppDatabase _db;
@@ -532,6 +559,72 @@ class WorkoutRepository {
             ))
         .toList();
   }
+
+  Future<WorkoutSummaryData?> readWorkoutSummary(int workoutId) async {
+    final workout = await (_db.select(_db.workouts)..where((w) => w.id.equals(workoutId))).getSingleOrNull();
+    if (workout == null) return null;
+    final rows = await _db.customSelect(
+      'SELECT e.name AS name, COUNT(ws.id) AS setsCount, '
+      "COALESCE(SUM(COALESCE(ws.weight,0.0) * COALESCE(ws.reps,0)), 0) AS tonnage "
+      'FROM workout_exercises we '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id '
+      'WHERE we.workout_id = ?1 '
+      'GROUP BY e.name '
+      'ORDER BY e.name ASC',
+      variables: [Variable<int>(workoutId)],
+      readsFrom: {_db.workoutExercises, _db.workoutSets, _db.exercises},
+    ).get();
+    int totalSets = 0;
+    double totalTonnage = 0;
+    final list = <WorkoutExerciseSummary>[];
+    for (final r in rows) {
+      final setsCount = (r.data['setsCount'] as int?) ?? 0;
+      final tonnage = ((r.data['tonnage'] as num?) ?? 0).toDouble();
+      totalSets += setsCount;
+      totalTonnage += tonnage;
+      list.add(WorkoutExerciseSummary(
+        exerciseName: (r.data['name'] as String?) ?? 'Exercise',
+        setsCount: setsCount,
+        tonnage: tonnage,
+      ));
+    }
+    return WorkoutSummaryData(workout: workout, totalSets: totalSets, totalTonnage: totalTonnage, exercises: list);
+  }
+
+  Future<List<RecentPr>> readRecentPrs({int days = 7}) async {
+    final userId = await _getCurrentUserId();
+    final since = DateTime.now().subtract(Duration(days: days));
+    // Global best per exercise
+    final best = await readBestOneRm(topN: 1000);
+    final bestMap = {for (final b in best) b.exerciseName: b.oneRm};
+    // Sets in window with exercise names and workout dates
+    final rows = await _db.customSelect(
+      'SELECT e.name AS name, w.started_at AS startedAt, '
+      "       (COALESCE(ws.weight,0.0) * (1.0 + COALESCE(ws.reps,0)/30.0)) AS oneRm "
+      'FROM workout_sets ws '
+      'JOIN workout_exercises we ON ws.workout_exercise_id = we.id '
+      'JOIN workouts w ON w.id = we.workout_id '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'WHERE w.user_id = ?1 AND w.finished_at IS NOT NULL AND w.started_at >= ?2',
+      variables: [Variable<int>(userId), Variable<DateTime>(since)],
+      readsFrom: {_db.workoutSets, _db.workoutExercises, _db.workouts, _db.exercises},
+    ).get();
+    final byExercise = <String, RecentPr?>{};
+    for (final r in rows) {
+      final name = (r.data['name'] as String?) ?? '';
+      final startedAt = r.data['startedAt'] as DateTime;
+      final oneRm = ((r.data['oneRm'] as num?) ?? 0).toDouble();
+      final bestVal = bestMap[name] ?? 0;
+      if (oneRm > 0 && (oneRm >= bestVal - 0.0001)) {
+        final current = byExercise[name];
+        if (current == null || startedAt.isAfter(current.date)) {
+          byExercise[name] = RecentPr(exerciseName: name, oneRm: oneRm, date: startedAt);
+        }
+      }
+    }
+    return byExercise.values.whereType<RecentPr>().toList()..sort((a, b) => b.date.compareTo(a.date));
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -597,4 +690,12 @@ final topExerciseVolumeProvider = FutureProvider<List<ExerciseVolume>>((ref) asy
 
 final bestOneRmProvider = FutureProvider<List<BestOneRm>>((ref) async {
   return ref.read(workoutRepositoryProvider).readBestOneRm(topN: 5);
+});
+
+final workoutSummaryProvider = FutureProvider.family<WorkoutSummaryData?, int>((ref, workoutId) async {
+  return ref.read(workoutRepositoryProvider).readWorkoutSummary(workoutId);
+});
+
+final recentPrsProvider = FutureProvider<List<RecentPr>>((ref) async {
+  return ref.read(workoutRepositoryProvider).readRecentPrs(days: 7);
 });
