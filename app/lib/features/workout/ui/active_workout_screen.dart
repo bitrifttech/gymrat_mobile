@@ -5,6 +5,7 @@ import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 
 class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -206,7 +207,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                             final rows = <Widget>[];
                                             for (int i = 1; i <= (maxRows == 0 ? 1 : maxRows); i++) {
                                               final existing = ss.where((s) => s.setIndex == i).toList();
-                                              final weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(1) : '');
+                                              final weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(0) : '');
                                               final repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
                                               rows.add(Padding(
                                                 padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -220,9 +221,11 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                         keyboardType: TextInputType.number,
                                                         textInputAction: TextInputAction.next,
                                                         decoration: InputDecoration(labelText: repsLabel.isEmpty ? 'Reps' : 'Reps ($repsLabel)'),
+                                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                                         onChanged: (_) async {
                                                           final reps = int.tryParse(repsCtrl.text);
-                                                          final weight = double.tryParse(weightCtrl.text);
+                                                          final weightInt = int.tryParse(weightCtrl.text);
+                                                          final weight = weightInt?.toDouble();
                                                           await ref.read(workoutRepositoryProvider).upsertSetByIndex(
                                                                 workoutExerciseId: we.id,
                                                                 setIndex: i,
@@ -239,10 +242,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                         controller: weightCtrl,
                                                         keyboardType: TextInputType.number,
                                                         textInputAction: TextInputAction.next,
+                                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                                         decoration: const InputDecoration(labelText: 'Weight'),
                                                         onChanged: (_) async {
                                                           final reps = int.tryParse(repsCtrl.text);
-                                                          final weight = double.tryParse(weightCtrl.text);
+                                                          final weightInt = int.tryParse(weightCtrl.text);
+                                                          final weight = weightInt?.toDouble();
                                                           await ref.read(workoutRepositoryProvider).upsertSetByIndex(
                                                                 workoutExerciseId: we.id,
                                                                 setIndex: i,

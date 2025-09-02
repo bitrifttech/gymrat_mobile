@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 class WorkoutDetailScreen extends ConsumerWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
@@ -112,6 +113,7 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                           initialValue: s.reps?.toString() ?? '',
                                           keyboardType: TextInputType.number,
                                           decoration: const InputDecoration(labelText: 'Reps'),
+                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                           onChanged: (val) async {
                                             final reps = int.tryParse(val);
                                             await ref.read(workoutRepositoryProvider).upsertSetByIndex(
@@ -135,11 +137,13 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: TextFormField(
-                                          initialValue: s.weight?.toStringAsFixed(1) ?? '',
+                                          initialValue: s.weight == null ? '' : s.weight!.toStringAsFixed(0),
                                           keyboardType: TextInputType.number,
+                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                           decoration: const InputDecoration(labelText: 'Weight'),
                                           onChanged: (val) async {
-                                            final weight = double.tryParse(val);
+                                            final weightInt = int.tryParse(val);
+                                            final weight = weightInt?.toDouble();
                                             await ref.read(workoutRepositoryProvider).upsertSetByIndex(
                                                   workoutExerciseId: we.id,
                                                   setIndex: s.setIndex,
@@ -148,7 +152,8 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                                 );
                                           },
                                           onFieldSubmitted: (val) async {
-                                            final weight = double.tryParse(val);
+                                            final weightInt = int.tryParse(val);
+                                            final weight = weightInt?.toDouble();
                                             await ref.read(workoutRepositoryProvider).upsertSetByIndex(
                                                   workoutExerciseId: we.id,
                                                   setIndex: s.setIndex,
