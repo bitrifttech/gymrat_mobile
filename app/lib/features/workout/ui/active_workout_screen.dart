@@ -20,6 +20,10 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   final Map<int, int> _remainingSecondsByWorkoutExerciseId = {};
   final FlutterLocalNotificationsPlugin _notifier = FlutterLocalNotificationsPlugin();
 
+  Timer? _elapsedTimer;
+  int _elapsedSeconds = 0;
+  int? _timerWorkoutId;
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +43,36 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     for (final t in _timersByWorkoutExerciseId.values) {
       t?.cancel();
     }
+    _stopElapsedTimer();
     super.dispose();
+  }
+
+  String _formatElapsed(int seconds) {
+    final d = Duration(seconds: seconds);
+    final hours = d.inHours.toString().padLeft(2, '0');
+    final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final secs = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$secs';
+  }
+
+  void _startElapsedTimer(int workoutId, DateTime startedAt) {
+    if (_timerWorkoutId == workoutId && _elapsedTimer != null) return;
+    _elapsedTimer?.cancel();
+    _timerWorkoutId = workoutId;
+    setState(() {
+      _elapsedSeconds = DateTime.now().difference(startedAt).inSeconds;
+    });
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        _elapsedSeconds = DateTime.now().difference(startedAt).inSeconds;
+      });
+    });
+  }
+
+  void _stopElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _elapsedTimer = null;
+    _timerWorkoutId = null;
   }
 
   Future<void> _alertRestComplete() async {
@@ -89,12 +122,21 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Active Workout'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: Text(_formatElapsed(_elapsedSeconds), style: Theme.of(context).textTheme.titleMedium),
+            ),
+          ),
+        ],
       ),
       body: active.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
         data: (w) {
           if (w == null) {
+            _stopElapsedTimer();
             return Center(
               child: ElevatedButton.icon(
                 onPressed: () async {
@@ -107,6 +149,9 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
               ),
             );
           }
+
+          // Start (or continue) the elapsed timer for this workout
+          _startElapsedTimer(w.id, w.startedAt);
 
           final exercises = ref.watch(workoutExercisesProvider(w.id));
           final targets = ref.watch(workoutTemplateTargetsProvider(w.id));
@@ -285,6 +330,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         FocusScope.of(context).unfocus();
+                        _stopElapsedTimer();
                         await ref.read(workoutRepositoryProvider).finishWorkout(w.id);
                         if (!context.mounted) return;
                         context.goNamed('home');
