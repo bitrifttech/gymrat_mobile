@@ -3,6 +3,24 @@ import 'package:drift/drift.dart';
 import 'package:app/core/db_provider.dart';
 import 'package:app/data/db/app_database.dart';
 
+class WeeklyVolume {
+  const WeeklyVolume({required this.yearWeek, required this.tonnage});
+  final String yearWeek; // e.g., 2025-03
+  final double tonnage;
+}
+
+class ExerciseVolume {
+  const ExerciseVolume({required this.exerciseName, required this.tonnage});
+  final String exerciseName;
+  final double tonnage;
+}
+
+class BestOneRm {
+  const BestOneRm({required this.exerciseName, required this.oneRm});
+  final String exerciseName;
+  final double oneRm;
+}
+
 class WorkoutRepository {
   WorkoutRepository(this._db);
   final AppDatabase _db;
@@ -440,6 +458,80 @@ class WorkoutRepository {
       await deleteWorkout(w.id);
     }
   }
+
+  // ----- Metrics: Workouts -----
+
+  Future<List<WeeklyVolume>> readWeeklyVolume({int weeks = 6}) async {
+    final userId = await _getCurrentUserId();
+    final since = DateTime.now().subtract(Duration(days: weeks * 7));
+    final rows = await _db.customSelect(
+      "SELECT strftime('%Y-%W', w.started_at) AS yw, "
+      "       COALESCE(SUM(COALESCE(ws.weight,0.0) * COALESCE(ws.reps,0)), 0) AS tonnage "
+      'FROM workout_sets ws '
+      'JOIN workout_exercises we ON we.id = ws.workout_exercise_id '
+      'JOIN workouts w ON w.id = we.workout_id '
+      'WHERE w.user_id = ?1 AND w.finished_at IS NOT NULL AND w.started_at >= ?2 '
+      'GROUP BY yw '
+      'ORDER BY yw ASC',
+      variables: [Variable<int>(userId), Variable<DateTime>(since)],
+      readsFrom: {_db.workoutSets, _db.workoutExercises, _db.workouts},
+    ).get();
+    return rows
+        .map((r) => WeeklyVolume(
+              yearWeek: (r.data['yw'] as String?) ?? '',
+              tonnage: ((r.data['tonnage'] as num?) ?? 0).toDouble(),
+            ))
+        .toList();
+  }
+
+  Future<List<ExerciseVolume>> readTopExerciseVolume({int weeks = 6, int topN = 5}) async {
+    final userId = await _getCurrentUserId();
+    final since = DateTime.now().subtract(Duration(days: weeks * 7));
+    final rows = await _db.customSelect(
+      'SELECT e.name AS name, '
+      "       COALESCE(SUM(COALESCE(ws.weight,0.0) * COALESCE(ws.reps,0)), 0) AS tonnage "
+      'FROM workout_sets ws '
+      'JOIN workout_exercises we ON ws.workout_exercise_id = we.id '
+      'JOIN workouts w ON w.id = we.workout_id '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'WHERE w.user_id = ?1 AND w.finished_at IS NOT NULL AND w.started_at >= ?2 '
+      'GROUP BY e.name '
+      'ORDER BY tonnage DESC '
+      'LIMIT ?3',
+      variables: [Variable<int>(userId), Variable<DateTime>(since), Variable<int>(topN)],
+      readsFrom: {_db.workoutSets, _db.workoutExercises, _db.workouts, _db.exercises},
+    ).get();
+    return rows
+        .map((r) => ExerciseVolume(
+              exerciseName: (r.data['name'] as String?) ?? 'Exercise',
+              tonnage: ((r.data['tonnage'] as num?) ?? 0).toDouble(),
+            ))
+        .toList();
+  }
+
+  Future<List<BestOneRm>> readBestOneRm({int topN = 5}) async {
+    final userId = await _getCurrentUserId();
+    final rows = await _db.customSelect(
+      'SELECT e.name AS name, '
+      "       MAX(COALESCE(ws.weight,0.0) * (1.0 + COALESCE(ws.reps,0)/30.0)) AS oneRm "
+      'FROM workout_sets ws '
+      'JOIN workout_exercises we ON ws.workout_exercise_id = we.id '
+      'JOIN workouts w ON w.id = we.workout_id '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'WHERE w.user_id = ?1 AND w.finished_at IS NOT NULL '
+      'GROUP BY e.name '
+      'ORDER BY oneRm DESC '
+      'LIMIT ?2',
+      variables: [Variable<int>(userId), Variable<int>(topN)],
+      readsFrom: {_db.workoutSets, _db.workoutExercises, _db.workouts, _db.exercises},
+    ).get();
+    return rows
+        .map((r) => BestOneRm(
+              exerciseName: (r.data['name'] as String?) ?? 'Exercise',
+              oneRm: ((r.data['oneRm'] as num?) ?? 0).toDouble(),
+            ))
+        .toList();
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -493,4 +585,16 @@ final todaysWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
 
 final todaysScheduledWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
   return ref.read(workoutRepositoryProvider).watchTodaysScheduledWorkoutAnyStatus();
+});
+
+final weeklyVolumeProvider = FutureProvider<List<WeeklyVolume>>((ref) async {
+  return ref.read(workoutRepositoryProvider).readWeeklyVolume(weeks: 6);
+});
+
+final topExerciseVolumeProvider = FutureProvider<List<ExerciseVolume>>((ref) async {
+  return ref.read(workoutRepositoryProvider).readTopExerciseVolume(weeks: 6, topN: 5);
+});
+
+final bestOneRmProvider = FutureProvider<List<BestOneRm>>((ref) async {
+  return ref.read(workoutRepositoryProvider).readBestOneRm(topN: 5);
 });
