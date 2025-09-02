@@ -13,6 +13,7 @@ import 'package:app/features/workout/ui/active_workout_screen.dart';
 import 'package:app/features/workout/ui/workout_history_screen.dart';
 import 'package:app/features/workout/ui/templates_screen.dart';
 import 'package:app/features/workout/ui/workout_detail_screen.dart';
+import 'package:app/features/metrics/ui/metrics_screen.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -40,6 +41,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'home',
         pageBuilder: (BuildContext context, GoRouterState state) {
           return const NoTransitionPage(child: HomeScreen());
+        },
+      ),
+      GoRoute(
+        path: '/metrics',
+        name: 'metrics',
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return const NoTransitionPage(child: MetricsScreen());
         },
       ),
       GoRoute(

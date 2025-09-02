@@ -20,6 +20,21 @@ class MacroTotals {
   final int fatsG;
 }
 
+class DailyMacroTotals {
+  const DailyMacroTotals({
+    required this.date,
+    required this.calories,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatsG,
+  });
+  final DateTime date;
+  final int calories;
+  final int proteinG;
+  final int carbsG;
+  final int fatsG;
+}
+
 class MealTotals {
   const MealTotals({
     required this.mealType,
@@ -273,6 +288,41 @@ class FoodRepository {
     await (_db.delete(_db.mealItems)..where((i) => i.id.equals(itemId))).go();
   }
 
+  // Nutrition history (7/30 days)
+  Future<List<DailyMacroTotals>> readDailyMacroTotals({required int days}) async {
+    final userId = await _getCurrentUserId();
+    final today = _dateOnly(DateTime.now());
+    final since = today.subtract(Duration(days: days - 1));
+    final rows = await _db.customSelect(
+      'SELECT m.date AS d, '
+      '       COALESCE(SUM(mi.calories), 0) AS calories, '
+      '       COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+      '       COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+      '       COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+      'FROM meals m '
+      'LEFT JOIN meal_items mi ON mi.meal_id = m.id '
+      'WHERE m.user_id = ?1 AND m.date BETWEEN ?2 AND ?3 '
+      'GROUP BY m.date '
+      'ORDER BY m.date ASC',
+      variables: [Variable<int>(userId), Variable<DateTime>(since), Variable<DateTime>(today)],
+      readsFrom: {_db.meals, _db.mealItems},
+    ).get();
+    final map = {for (final r in rows) _dateOnly(r.data['d'] as DateTime): r};
+    final result = <DailyMacroTotals>[];
+    for (int i = 0; i < days; i++) {
+      final d = since.add(Duration(days: i));
+      final row = map[d];
+      result.add(DailyMacroTotals(
+        date: d,
+        calories: row == null ? 0 : (row.data['calories'] as int? ?? 0),
+        proteinG: row == null ? 0 : (row.data['proteinG'] as int? ?? 0),
+        carbsG: row == null ? 0 : (row.data['carbsG'] as int? ?? 0),
+        fatsG: row == null ? 0 : (row.data['fatsG'] as int? ?? 0),
+      ));
+    }
+    return result;
+  }
+
   // --- Open Food Facts integration ---
 
   Future<int> _cacheOrUpdateOFFFood(Map<String, dynamic> p) async {
@@ -391,4 +441,12 @@ final offSearchResultsProvider = FutureProvider.autoDispose.family<List<Food>, S
   if (ids.isEmpty) return [];
   final foodsList = await (repo._db.select(repo._db.foods)..where((f) => f.id.isIn(ids))).get();
   return foodsList;
+});
+
+final dailyMacros7Provider = FutureProvider<List<DailyMacroTotals>>((ref) async {
+  return ref.read(foodRepositoryProvider).readDailyMacroTotals(days: 7);
+});
+
+final dailyMacros30Provider = FutureProvider<List<DailyMacroTotals>>((ref) async {
+  return ref.read(foodRepositoryProvider).readDailyMacroTotals(days: 30);
 });
