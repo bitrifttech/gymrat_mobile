@@ -374,7 +374,20 @@ class WorkoutRepository {
   }
 
   Future<void> deleteWorkout(int workoutId) async {
-    await (_db.delete(_db.workouts)..where((w) => w.id.equals(workoutId))).go();
+    await _db.transaction(() async {
+      // Delete sets for all workout_exercises under this workout
+      final weIds = await (_db.select(_db.workoutExercises)
+            ..where((we) => we.workoutId.equals(workoutId)))
+          .get()
+          .then((list) => list.map((e) => e.id).toList());
+      if (weIds.isNotEmpty) {
+        await (_db.delete(_db.workoutSets)
+              ..where((ws) => ws.workoutExerciseId.isIn(weIds)))
+            .go();
+      }
+      await (_db.delete(_db.workoutExercises)..where((we) => we.workoutId.equals(workoutId))).go();
+      await (_db.delete(_db.workouts)..where((w) => w.id.equals(workoutId))).go();
+    });
   }
 
   Future<int> resetWorkoutFrom(int oldWorkoutId) async {
