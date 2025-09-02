@@ -101,7 +101,7 @@ class SettingsRepository {
 
   Future<String> getUnits() async {
     return await _db.readSetting('units') ?? 'metric';
-  }
+    }
 
   Future<void> setUnits(String units) async {
     await _db.upsertSetting('units', units);
@@ -109,9 +109,24 @@ class SettingsRepository {
 
   Future<void> resetAll() async {
     await _db.transaction(() async {
+      // Delete child tables first to satisfy FKs
+      await _db.customStatement('DELETE FROM workout_sets');
+      await _db.customStatement('DELETE FROM workout_exercises');
+      await _db.customStatement('DELETE FROM template_exercises');
+      await _db.customStatement('DELETE FROM meal_items');
+      // Delete parents
+      await _db.customStatement('DELETE FROM workouts');
+      await _db.customStatement('DELETE FROM exercises');
+      await _db.customStatement('DELETE FROM workout_schedule');
+      await _db.customStatement('DELETE FROM workout_templates');
+      await _db.customStatement('DELETE FROM meals');
+      await _db.customStatement('DELETE FROM foods');
+      // Users/goals/settings last (goals cascades from users, but we clear both)
       await _db.customStatement('DELETE FROM goals');
       await _db.customStatement('DELETE FROM users');
       await _db.customStatement('DELETE FROM settings');
+      // Optional: reset autoincrement counters
+      await _db.customStatement('DELETE FROM sqlite_sequence');
     });
   }
 }

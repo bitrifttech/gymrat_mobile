@@ -21,6 +21,14 @@ class WorkoutDetailScreen extends ConsumerWidget {
             title: Text(w.name ?? 'Workout'),
             actions: [
               IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: 'Save changes',
+                onPressed: () {
+                  FocusScope.of(ctx).unfocus();
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Changes saved')));
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Restart (keep values)',
                 onPressed: () async {
@@ -93,6 +101,15 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                           initialValue: s.reps?.toString() ?? '',
                                           keyboardType: TextInputType.number,
                                           decoration: const InputDecoration(labelText: 'Reps'),
+                                          onChanged: (val) async {
+                                            final reps = int.tryParse(val);
+                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                  workoutExerciseId: we.id,
+                                                  setIndex: s.setIndex,
+                                                  reps: reps,
+                                                  weight: s.weight,
+                                                );
+                                          },
                                           onFieldSubmitted: (val) async {
                                             final reps = int.tryParse(val);
                                             await ref.read(workoutRepositoryProvider).upsertSetByIndex(
@@ -110,6 +127,15 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                           initialValue: s.weight?.toStringAsFixed(1) ?? '',
                                           keyboardType: TextInputType.number,
                                           decoration: const InputDecoration(labelText: 'Weight'),
+                                          onChanged: (val) async {
+                                            final weight = double.tryParse(val);
+                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                  workoutExerciseId: we.id,
+                                                  setIndex: s.setIndex,
+                                                  reps: s.reps,
+                                                  weight: weight,
+                                                );
+                                          },
                                           onFieldSubmitted: (val) async {
                                             final weight = double.tryParse(val);
                                             await ref.read(workoutRepositoryProvider).upsertSetByIndex(

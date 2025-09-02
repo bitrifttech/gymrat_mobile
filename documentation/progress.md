@@ -56,3 +56,18 @@
 - Food Log: Added Scan and Search actions in the app bar.
 - iOS: Set `NSCameraUsageDescription` for barcode scanning.
 - Analyzer: clean; verified in iOS simulator; scan and search add items and update Home rings immediately.
+
+## Milestone 5 (Workout Templates, Schedule, Active + History)
+- Schema & Migration: Added `exercises`, `workouts`, `workout_exercises`, `workout_sets` (v4); added `workout_templates`, `template_exercises` with `setsCount`, `repsMin`, `repsMax`, and `workout_schedule` (v5-v6). `workouts.sourceTemplateId` supports template lineage.
+- Repository: Template CRUD, schedule, start/resume from schedule, read template targets, upsert sets by index, reopen and restart from a finished workout (clone with values).
+- UI:
+  - Templates: create/delete templates, add exercises, set targets (sets + reps or range).
+  - Schedule: assign templates to days; dropdowns bound to live schedule stream.
+  - Active Workout: cards per exercise with inline set rows (reps/weight), immediate persistence on change, Save & End button; focus auto-advance between fields.
+  - Home: "Today's Workout" task reflects scheduled/active/completed status; completed shows green with Edit icon.
+  - History: list of completed workouts linking to detail; removed Restart button and added Edit icon.
+  - Detail: inline edit of saved sets; changes auto-save on change; added Save button (unfocus + confirmation); Restart action clones workout keeping values.
+- Settings: "Reset and Restart Onboarding" clears all data across tables (incl. workout tables) and resets sequences.
+- Analyzer: clean; smoke tested flows — schedule → start → fill sets → save/end → edit from task → restart from history.
+
+-- Milestone 5 closed. --

@@ -59,6 +59,13 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                           child: TextField(
                             controller: _exerciseCtrl,
                             decoration: const InputDecoration(labelText: 'Add exercise by name'),
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) async {
+                              final name = _exerciseCtrl.text.trim();
+                              if (name.isEmpty) return;
+                              await ref.read(workoutRepositoryProvider).addExerciseToWorkout(workoutId: w.id, exerciseName: name);
+                              _exerciseCtrl.clear();
+                            },
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -130,8 +137,9 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                       child: TextField(
                                                         controller: repsCtrl,
                                                         keyboardType: TextInputType.number,
+                                                        textInputAction: TextInputAction.next,
                                                         decoration: InputDecoration(labelText: repsLabel.isEmpty ? 'Reps' : 'Reps ($repsLabel)'),
-                                                        onSubmitted: (_) async {
+                                                        onChanged: (_) async {
                                                           final reps = int.tryParse(repsCtrl.text);
                                                           final weight = double.tryParse(weightCtrl.text);
                                                           await ref.read(workoutRepositoryProvider).upsertSetByIndex(
@@ -141,6 +149,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                                 weight: weight,
                                                               );
                                                         },
+                                                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
@@ -148,8 +157,9 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                       child: TextField(
                                                         controller: weightCtrl,
                                                         keyboardType: TextInputType.number,
+                                                        textInputAction: TextInputAction.next,
                                                         decoration: const InputDecoration(labelText: 'Weight'),
-                                                        onSubmitted: (_) async {
+                                                        onChanged: (_) async {
                                                           final reps = int.tryParse(repsCtrl.text);
                                                           final weight = double.tryParse(weightCtrl.text);
                                                           await ref.read(workoutRepositoryProvider).upsertSetByIndex(
@@ -159,6 +169,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                                 weight: weight,
                                                               );
                                                         },
+                                                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                                                       ),
                                                     ),
                                                   ],
@@ -187,6 +198,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
+                        FocusScope.of(context).unfocus();
                         await ref.read(workoutRepositoryProvider).finishWorkout(w.id);
                         if (!context.mounted) return;
                         context.goNamed('home');

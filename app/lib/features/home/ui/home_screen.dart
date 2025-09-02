@@ -16,6 +16,7 @@ class HomeScreen extends ConsumerWidget {
     final scheduledTemplate = ref.watch(scheduledTemplateTodayProvider);
     final activeWorkout = ref.watch(activeWorkoutProvider);
     final isCompletedToday = ref.watch(todaysScheduledWorkoutCompletedProvider);
+    final todaysWorkoutAny = ref.watch(todaysWorkoutAnyProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('GymRat'),
@@ -94,12 +95,29 @@ class HomeScreen extends ConsumerWidget {
                 error: (e, st) => const SizedBox.shrink(),
                 data: (completed) {
                   if (completed) {
-                    return const ListTile(
-                      leading: Icon(Icons.check_circle, color: Colors.green),
-                      title: Text('Today’s Workout: Completed'),
-                      subtitle: Text('Great job!'),
+                    return todaysWorkoutAny.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (e, st) => const SizedBox.shrink(),
+                      data: (tw) {
+                        if (tw == null) {
+                          return const ListTile(
+                            leading: Icon(Icons.check_circle, color: Colors.green),
+                            title: Text('Today’s Workout: Completed'),
+                          );
+                        }
+                        return ListTile(
+                          leading: const Icon(Icons.check_circle, color: Colors.green),
+                          title: Text('Today’s Workout: ${tw.name ?? 'Workout'} (Completed)'),
+                          trailing: IconButton(
+                            tooltip: 'Edit',
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => context.push('/workout/detail/${tw.id}'),
+                          ),
+                        );
+                      },
                     );
                   }
+
                   return activeWorkout.when(
                     loading: () => const SizedBox.shrink(),
                     error: (e, st) => const SizedBox.shrink(),
@@ -108,10 +126,7 @@ class HomeScreen extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.play_circle_fill),
                           title: Text('Continue Workout: ${wk.name ?? 'Workout'}'),
-                          trailing: ElevatedButton(
-                            onPressed: () => context.pushNamed('workout.active'),
-                            child: const Text('Resume'),
-                          ),
+                          trailing: TextButton(onPressed: () => context.pushNamed('workout.active'), child: const Text('Continue')),
                         );
                       }
                       return scheduledTemplate.when(

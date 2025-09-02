@@ -354,6 +354,22 @@ class WorkoutRepository {
   Future<Workout?> getWorkoutById(int id) async {
     return (_db.select(_db.workouts)..where((w) => w.id.equals(id))).getSingleOrNull();
   }
+
+  Stream<Workout?> watchTodaysWorkoutAnyStatus() {
+    final today = _dateOnly(DateTime.now());
+    final tomorrow = today.add(const Duration(days: 1));
+    final q = (_db.select(_db.workouts)
+      ..where((w) => w.startedAt.isBiggerOrEqualValue(today) & w.startedAt.isSmallerThanValue(tomorrow))
+      ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
+      ..limit(1));
+    return q.watchSingleOrNull();
+  }
+
+  Future<void> reopenWorkout(int workoutId) async {
+    await (_db.update(_db.workouts)..where((w) => w.id.equals(workoutId))).write(
+      const WorkoutsCompanion(finishedAt: Value(null)),
+    );
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -399,4 +415,8 @@ final workoutTemplateTargetsProvider = FutureProvider.family<Map<String, Templat
 
 final todaysScheduledWorkoutCompletedProvider = StreamProvider<bool>((ref) {
   return ref.read(workoutRepositoryProvider).watchIsTodaysScheduledWorkoutCompleted();
+});
+
+final todaysWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
+  return ref.read(workoutRepositoryProvider).watchTodaysWorkoutAnyStatus();
 });

@@ -9,7 +9,6 @@ class WorkoutHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(workoutHistoryProvider);
-    final repo = ref.read(workoutRepositoryProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Workout History')),
       body: history.when(
@@ -30,13 +29,10 @@ class WorkoutHistoryScreen extends ConsumerWidget {
                 title: Text(title),
                 subtitle: Text('${started.toLocal()} → ${finished?.toLocal() ?? ''}'),
                 onTap: () => context.push('/workout/detail/${w.id}'),
-                trailing: TextButton(
-                  onPressed: () async {
-                    await repo.restartWorkoutFrom(w.id);
-                    if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout restarted as active')));
-                  },
-                  child: const Text('Restart'),
+                trailing: IconButton(
+                  tooltip: 'Edit',
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => context.push('/workout/detail/${w.id}'),
                 ),
               );
             },
