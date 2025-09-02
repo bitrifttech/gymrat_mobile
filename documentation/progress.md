@@ -58,16 +58,16 @@
 - Analyzer: clean; verified in iOS simulator; scan and search add items and update Home rings immediately.
 
 ## Milestone 5 (Workout Templates, Schedule, Active + History)
-- Schema & Migration: Added `exercises`, `workouts`, `workout_exercises`, `workout_sets` (v4); added `workout_templates`, `template_exercises` with `setsCount`, `repsMin`, `repsMax`, and `workout_schedule` (v5-v6). `workouts.sourceTemplateId` supports template lineage.
-- Repository: Template CRUD, schedule, start/resume from schedule, read template targets, upsert sets by index, reopen and restart from a finished workout (clone with values).
+- Schema & Migration: Added `exercises`, `workouts`, `workout_exercises`, `workout_sets` (v4); added `workout_templates`, `template_exercises` with `setsCount`, `repsMin`, `repsMax`, `restSeconds`, and `workout_schedule` (v5-v7). `workouts.sourceTemplateId` supports template lineage.
+- Repository: Template CRUD, schedule, start/resume from schedule, read template targets, upsert sets by index, reopen and restart/reset finished workouts, delete workout (cascade sets/exercises), delete today's scheduled workout instances.
 - UI:
-  - Templates: create/delete templates, add exercises, set targets (sets + reps or range).
+  - Templates: create/delete templates, add exercises, targets (sets + rep range) and rest seconds per exercise.
   - Schedule: assign templates to days; dropdowns bound to live schedule stream.
-  - Active Workout: cards per exercise with inline set rows (reps/weight), immediate persistence on change, Save & End button; focus auto-advance between fields.
-  - Home: "Today's Workout" task reflects scheduled/active/completed status; completed shows green with Edit icon.
-  - History: list of completed workouts linking to detail; removed Restart button and added Edit icon.
-  - Detail: inline edit of saved sets; changes auto-save on change; added Save button (unfocus + confirmation); Restart action clones workout keeping values.
-- Settings: "Reset and Restart Onboarding" clears all data across tables (incl. workout tables) and resets sequences.
-- Analyzer: clean; smoke tested flows — schedule → start → fill sets → save/end → edit from task → restart from history.
+  - Active Workout: inline set rows (reps/weight) with immediate persistence, Save & End, focus auto-advance, per-exercise rest timer with haptic + audible alert, integer-only weights, visible elapsed workout timer in AppBar.
+  - Home: "Today's Workout" reflects scheduled/active/completed; completed shows green with Edit; Delete action removes today's scheduled instance(s).
+  - History: list completed workouts linking to detail.
+  - Detail: inline edit of sets; Save; shows total workout time; single Restart button prompts to keep values (restart) or clear (reset).
+- Settings: "Reset and Restart Onboarding" clears all data across tables and resets sequences.
+- Analyzer: clean; smoke tested flows — schedule → start → fill sets → save/end → edit from task → restart/reset via prompt → delete from task.
 
 -- Milestone 5 closed. --
