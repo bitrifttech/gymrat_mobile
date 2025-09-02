@@ -8,6 +8,13 @@ class WorkoutDetailScreen extends ConsumerWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
   final int workoutId;
 
+  String _formatElapsed(Duration d) {
+    final hours = d.inHours.toString().padLeft(2, '0');
+    final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final secs = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$secs';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(workoutRepositoryProvider);
@@ -18,9 +25,22 @@ class WorkoutDetailScreen extends ConsumerWidget {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         final w = snap.data!;
+        final started = w.startedAt;
+        final finished = w.finishedAt;
+        final elapsed = finished == null ? null : finished.difference(started);
         return Scaffold(
           appBar: AppBar(
             title: Text(w.name ?? 'Workout'),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(26),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  finished == null ? 'In progress' : 'Total time: ${_formatElapsed(elapsed!)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.save),
