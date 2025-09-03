@@ -613,7 +613,21 @@ class WorkoutRepository {
     final byExercise = <String, RecentPr?>{};
     for (final r in rows) {
       final name = (r.data['name'] as String?) ?? '';
-      final startedAt = r.data['startedAt'] as DateTime;
+      final raw = r.data['startedAt'];
+      DateTime startedAt;
+      if (raw is DateTime) {
+        startedAt = raw;
+      } else if (raw is int) {
+        startedAt = DateTime.fromMillisecondsSinceEpoch(raw);
+      } else if (raw is String) {
+        try {
+          startedAt = DateTime.parse(raw);
+        } catch (_) {
+          startedAt = DateTime.now();
+        }
+      } else {
+        startedAt = DateTime.now();
+      }
       final oneRm = ((r.data['oneRm'] as num?) ?? 0).toDouble();
       final bestVal = bestMap[name] ?? 0;
       if (oneRm > 0 && (oneRm >= bestVal - 0.0001)) {
