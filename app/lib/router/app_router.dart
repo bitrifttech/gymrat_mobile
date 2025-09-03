@@ -15,6 +15,7 @@ import 'package:app/features/workout/ui/workout_detail_screen.dart';
 import 'package:app/features/metrics/ui/metrics_screen.dart';
 import 'package:app/features/workout/ui/workout_summary_screen.dart';
 import 'package:app/features/food/ui/meal_history_screen.dart';
+import 'package:app/shell/bottom_nav_shell.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -37,19 +38,46 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return const NoTransitionPage(child: LaunchScreen());
         },
       ),
-      GoRoute(
-        path: '/',
-        name: 'home',
-        pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: HomeScreen());
-        },
-      ),
-      GoRoute(
-        path: '/metrics',
-        name: 'metrics',
-        pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: MetricsScreen());
-        },
+      // Bottom Navigation Shell
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => BottomNavShell(shell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/',
+              name: 'home',
+              pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/meals/history',
+              name: 'meals.history',
+              pageBuilder: (context, state) => const NoTransitionPage(child: MealHistoryScreen()),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/workout/history',
+              name: 'workout.history',
+              pageBuilder: (context, state) => const NoTransitionPage(child: WorkoutHistoryScreen()),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/metrics',
+              name: 'metrics',
+              pageBuilder: (context, state) => const NoTransitionPage(child: MetricsScreen()),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/configure',
+              name: 'configure',
+              pageBuilder: (context, state) => const NoTransitionPage(child: ConfigureScreen()),
+            ),
+          ]),
+        ],
       ),
       GoRoute(
         path: '/workout/summary/:id',
@@ -57,13 +85,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (BuildContext context, GoRouterState state) {
           final id = int.parse(state.pathParameters['id']!);
           return NoTransitionPage(child: WorkoutSummaryScreen(workoutId: id));
-        },
-      ),
-      GoRoute(
-        path: '/meals/history',
-        name: 'meals.history',
-        pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: MealHistoryScreen());
         },
       ),
       GoRoute(
