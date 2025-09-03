@@ -130,13 +130,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/workout/history',
-        name: 'workout.history',
-        pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: WorkoutHistoryScreen());
-        },
-      ),
-      GoRoute(
         path: '/workout/detail/:id',
         name: 'workout.detail',
         pageBuilder: (BuildContext context, GoRouterState state) {
