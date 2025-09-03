@@ -86,7 +86,31 @@ class WorkoutDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          body: _WorkoutDetailBody(workoutId: workoutId),
+          body: Column(
+            children: [
+              Expanded(child: _WorkoutDetailBody(workoutId: workoutId)),
+              if (finished == null)
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          FocusScope.of(ctx).unfocus();
+                          await repo.finishWorkout(w.id);
+                          if (!ctx.mounted) return;
+                          context.push('/workout/summary/${w.id}');
+                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout saved and completed')));
+                        },
+                        icon: const Icon(Icons.check),
+                        label: const Text('Save & End Workout'),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
