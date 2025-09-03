@@ -70,17 +70,18 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ),
                   );
                   if (choice == null) return;
+                  int newId;
                   if (choice) {
-                    await repo.restartWorkoutFrom(workoutId);
+                    newId = await repo.restartWorkoutFrom(workoutId);
                     if (!ctx.mounted) return;
                     ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout restarted (kept values)')));
                   } else {
-                    await repo.resetWorkoutFrom(workoutId);
+                    newId = await repo.resetWorkoutFrom(workoutId);
                     if (!ctx.mounted) return;
                     ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset (cleared values)')));
                   }
                   if (!ctx.mounted) return;
-                  context.goNamed('workout.detail', pathParameters: {'id': workoutId.toString()});
+                  context.goNamed('workout.detail', pathParameters: {'id': newId.toString()});
                 },
               ),
             ],
@@ -99,6 +100,7 @@ class _WorkoutDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final exercises = ref.watch(workoutExercisesProvider(workoutId));
+    final targets = ref.watch(workoutTemplateTargetsProvider(workoutId));
     return exercises.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Error: $e')),
@@ -124,6 +126,11 @@ class _WorkoutDetailBody extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Consumer(builder: (context, ref, _) {
                         final sets = ref.watch(workoutExerciseSetsProvider(we.id));
+                        final targetsMap = targets.maybeWhen(data: (m) => m, orElse: () => const {});
+                        final t = targetsMap[ex.name];
+                        final repsLabel = (t?.repsMin != null || t?.repsMax != null)
+                            ? '${t?.repsMin ?? ''}${t?.repsMin != null && t?.repsMax != null ? '-' : ''}${t?.repsMax ?? ''} reps'
+                            : '';
                         return sets.when(
                           loading: () => const Padding(
                             padding: EdgeInsets.all(8.0),
@@ -134,73 +141,63 @@ class _WorkoutDetailBody extends ConsumerWidget {
                             child: Text('Error: $e'),
                           ),
                           data: (ss) {
-                            if (ss.isEmpty) return const Text('No sets');
-                            return Column(
-                              children: [
-                                for (final s in ss)
-                                  Row(
-                                    children: [
-                                      SizedBox(width: 28, child: Text('#${s.setIndex}')),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: s.reps?.toString() ?? '',
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(labelText: 'Reps'),
-                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                          onChanged: (val) async {
-                                            final reps = int.tryParse(val);
-                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                  workoutExerciseId: we.id,
-                                                  setIndex: s.setIndex,
-                                                  reps: reps,
-                                                  weight: s.weight,
-                                                );
-                                          },
-                                          onFieldSubmitted: (val) async {
-                                            final reps = int.tryParse(val);
-                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                  workoutExerciseId: we.id,
-                                                  setIndex: s.setIndex,
-                                                  reps: reps,
-                                                  weight: s.weight,
-                                                );
-                                          },
-                                        ),
+                            final setsTarget = t?.setsCount ?? 0;
+                            final int maxRows = setsTarget > 0 ? setsTarget : ss.length;
+                            final rows = <Widget>[];
+                            for (int i = 1; i <= (maxRows == 0 ? 1 : maxRows); i++) {
+                              final existing = ss.where((s) => s.setIndex == i).toList();
+                              final TextEditingController repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
+                              final TextEditingController weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(0) : '');
+                              rows.add(Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                child: Row(
+                                  children: [
+                                    SizedBox(width: 28, child: Text('#$i')),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: repsCtrl,
+                                        keyboardType: TextInputType.number,
+                                        decoration: InputDecoration(labelText: repsLabel.isEmpty ? 'Reps' : 'Reps ($repsLabel)'),
+                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        onChanged: (_) async {
+                                          final reps = int.tryParse(repsCtrl.text);
+                                          final weightInt = int.tryParse(weightCtrl.text);
+                                          final weight = weightInt?.toDouble();
+                                          await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                workoutExerciseId: we.id,
+                                                setIndex: i,
+                                                reps: reps,
+                                                weight: weight,
+                                              );
+                                        },
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: s.weight == null ? '' : s.weight!.toStringAsFixed(0),
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                          decoration: const InputDecoration(labelText: 'Weight'),
-                                          onChanged: (val) async {
-                                            final weightInt = int.tryParse(val);
-                                            final weight = weightInt?.toDouble();
-                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                  workoutExerciseId: we.id,
-                                                  setIndex: s.setIndex,
-                                                  reps: s.reps,
-                                                  weight: weight,
-                                                );
-                                          },
-                                          onFieldSubmitted: (val) async {
-                                            final weightInt = int.tryParse(val);
-                                            final weight = weightInt?.toDouble();
-                                            await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                  workoutExerciseId: we.id,
-                                                  setIndex: s.setIndex,
-                                                  reps: s.reps,
-                                                  weight: weight,
-                                                );
-                                          },
-                                        ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: weightCtrl,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        decoration: const InputDecoration(labelText: 'Weight'),
+                                        onChanged: (_) async {
+                                          final reps = int.tryParse(repsCtrl.text);
+                                          final weightInt = int.tryParse(weightCtrl.text);
+                                          final weight = weightInt?.toDouble();
+                                          await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                                workoutExerciseId: we.id,
+                                                setIndex: i,
+                                                reps: reps,
+                                                weight: weight,
+                                              );
+                                        },
                                       ),
-                                    ],
-                                  ),
-                              ],
-                            );
+                                    ),
+                                  ],
+                                ),
+                              ));
+                            }
+                            return Column(children: rows);
                           },
                         );
                       }),
