@@ -87,3 +87,22 @@
 - App polish: Set app display name to “GymRat” on Android/iOS and configured GymRat_red launcher icon via flutter_launcher_icons.
 
 -- Milestone 6 closed. --
+
+## Housekeeping & Polish
+- UX:
+  - Added concise descriptions for activity levels (Onboarding + Edit Settings).
+  - Home: clarified in-progress workout label and removed the unused Workout section.
+- Workouts:
+  - Rest timers now toggle Start/Stop (Stop cancels the timer).
+  - After restart/reset, workout detail renders placeholder set rows from template targets so you can enter new data immediately.
+  - Added Save & End button to Workout Detail for in-progress sessions.
+  - Removed the Active Workout screen and routes; flows now use Workout Detail directly. Summary page includes a prominent Close back to Home.
+- Metrics:
+  - Removed the temporary Nutrition debug panel.
+  - Chart axis label polish retained (no overlapping top label), PR date parsing fix retained from prior work.
+- Performance & Build:
+  - Added DB indexes and bumped schema to v8 (meals.date, meal_items.meal_id, workouts.started_at, workouts.source_template_id, workout_exercises.workout_id, workout_sets.workout_exercise_id).
+  - Configured adaptive Android launcher icon and regenerated icons; kept GymRat_red branding across platforms.
+  - Removed unused daily macro providers after metrics revamp.
+
+-- Housekeeping & Polish closed. --
