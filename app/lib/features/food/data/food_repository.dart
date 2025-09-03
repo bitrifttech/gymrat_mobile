@@ -383,8 +383,8 @@ class FoodRepository {
       '       COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
       '       COALESCE(SUM(mi.fats_g), 0) AS fatsG '
       'FROM meals m '
-      'LEFT JOIN meal_items mi ON mi.meal_id = m.id '
-      'WHERE m.date BETWEEN ?1 AND ?2 '
+      'JOIN meal_items mi ON mi.meal_id = m.id '
+      'WHERE m.date >= ?1 AND m.date <= ?2 '
       'GROUP BY m.date '
       'ORDER BY m.date ASC',
       variables: [Variable<DateTime>(s), Variable<DateTime>(e)],
@@ -406,6 +406,35 @@ class FoodRepository {
         proteinG: row == null ? 0 : (row.data['proteinG'] as int? ?? 0),
         carbsG: row == null ? 0 : (row.data['carbsG'] as int? ?? 0),
         fatsG: row == null ? 0 : (row.data['fatsG'] as int? ?? 0),
+      ));
+    }
+    return result;
+  }
+
+  // Fallback: Build daily totals by querying each day individually (same logic as Meal History)
+  Future<List<DailyMacroTotals>> readDailyMacrosByDays({required DateTime start, required DateTime end}) async {
+    final s = _dateOnly(start);
+    final e = _dateOnly(end);
+    final result = <DailyMacroTotals>[];
+    for (DateTime d = s; !d.isAfter(e); d = d.add(const Duration(days: 1))) {
+      final row = await _db.customSelect(
+        'SELECT '
+        'COALESCE(SUM(mi.calories), 0) AS calories, '
+        'COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+        'COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+        'COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+        'FROM meal_items mi '
+        'JOIN meals m ON m.id = mi.meal_id '
+        'WHERE m.date = ?1',
+        variables: [Variable<DateTime>(d)],
+        readsFrom: {_db.mealItems, _db.meals},
+      ).getSingle();
+      result.add(DailyMacroTotals(
+        date: d,
+        calories: (row.data['calories'] as int?) ?? 0,
+        proteinG: (row.data['proteinG'] as int?) ?? 0,
+        carbsG: (row.data['carbsG'] as int?) ?? 0,
+        fatsG: (row.data['fatsG'] as int?) ?? 0,
       ));
     }
     return result;

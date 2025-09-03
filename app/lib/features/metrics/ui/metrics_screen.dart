@@ -93,7 +93,8 @@ class _NutritionTabState extends ConsumerState<_NutritionTab> {
         start = earliest;
       }
       _start = start;
-      _data = await repo.readDailyMacrosInRange(start: start, end: _end);
+      // Use per-day totals matching Meal History logic to avoid SQL grouping edge cases
+      _data = await repo.readDailyMacrosByDays(start: start, end: _end);
     } catch (e) {
       _error = '$e';
     } finally {
