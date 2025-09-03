@@ -71,3 +71,19 @@
 - Analyzer: clean; smoke tested flows — schedule → start → fill sets → save/end → edit from task → restart/reset via prompt → delete from task.
 
 -- Milestone 5 closed. --
+
+## Milestone 6 (Metrics & Insights)
+- Demo data seeding: Ensured meals (last 14 days) and multiple completed workouts exist on first run so metrics have data. Reset + restart onboarding reseeds.
+- Nutrition metrics:
+  - Single interactive LineChart (fl_chart) with macro selector (Kcal, Protein, Carbs, Fats, All) and time range (Week, Month, All time).
+  - Data sourcing aligned with Meal History using per-day totals (same WHERE m.date = ? logic). Added robust date casting for SQLite (int/string/DateTime) and guarded all macro columns.
+  - Added an optional debug panel under the chart listing raw daily rows to verify graph inputs.
+  - Chart polish: compact Y-axis labels (K format), tooltips with full values, disabled top/right titles, and computed “nice” axis bounds to prevent an extra overlapping top label.
+- Workout metrics:
+  - Weekly volume (last 6 weeks) and Top exercises by volume charts with tooltips and compact axes.
+  - Recent PRs detection and display (Epley est. 1RM per set), with robust startedAt date parsing (int/string/DateTime) to prevent type errors.
+  - Post-workout summary screen exists with sets, tonnage, per-exercise breakdown, and recent PRs.
+- Navigation: Added Metrics entry on Home and route wiring.
+- App polish: Set app display name to “GymRat” on Android/iOS and configured GymRat_red launcher icon via flutter_launcher_icons.
+
+-- Milestone 6 closed. --
