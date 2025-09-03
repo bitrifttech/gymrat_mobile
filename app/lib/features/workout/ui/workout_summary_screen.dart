@@ -12,7 +12,16 @@ class WorkoutSummaryScreen extends ConsumerWidget {
     final summary = ref.watch(workoutSummaryProvider(workoutId));
     final prs = ref.watch(recentPrsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Workout Summary')),
+      appBar: AppBar(
+        title: const Text('Workout Summary'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.go('/'),
+            icon: const Icon(Icons.close, color: Colors.white),
+            label: const Text('Close', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
