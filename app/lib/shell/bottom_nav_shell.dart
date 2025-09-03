@@ -28,35 +28,68 @@ class BottomNavShell extends StatelessWidget {
   }
 }
 
-class ConfigureScreen extends StatelessWidget {
+class ConfigureScreen extends StatefulWidget {
   const ConfigureScreen({super.key});
 
   @override
+  State<ConfigureScreen> createState() => _ConfigureScreenState();
+}
+
+class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ListTile(
-          leading: const Icon(Icons.article),
-          title: const Text('Workout Templates'),
-          onTap: () => context.pushNamed('workout.templates'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Configure'),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'Templates', icon: Icon(Icons.article)),
+            Tab(text: 'Schedule', icon: Icon(Icons.calendar_today)),
+            Tab(text: 'Profile', icon: Icon(Icons.settings)),
+            Tab(text: 'Tasks', icon: Icon(Icons.check_circle)),
+          ],
         ),
-        ListTile(
-          leading: const Icon(Icons.calendar_today),
-          title: const Text('Workout Schedule'),
-          onTap: () => context.pushNamed('workout.schedule'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.settings),
-          title: const Text('Edit Profile & Goals'),
-          onTap: () => context.pushNamed('settings.edit'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.check_circle),
-          title: const Text('Add Task (stub)'),
-          onTap: () => context.pushNamed('task.add'),
-        ),
-      ],
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _NavButton(label: 'Open Templates', onTap: () => context.pushNamed('workout.templates')),
+          _NavButton(label: 'Open Schedule', onTap: () => context.pushNamed('workout.schedule')),
+          _NavButton(label: 'Edit Profile & Goals', onTap: () => context.pushNamed('settings.edit')),
+          _NavButton(label: 'Add Task (stub)', onTap: () => context.pushNamed('task.add')),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ElevatedButton(
+        onPressed: onTap,
+        child: Text(label),
+      ),
     );
   }
 }
