@@ -15,10 +15,10 @@ class WorkoutSummaryScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Workout Summary'),
         actions: [
-          TextButton.icon(
+          IconButton(
+            tooltip: 'Close',
             onPressed: () => context.go('/'),
-            icon: const Icon(Icons.close, color: Colors.white),
-            label: const Text('Close', style: TextStyle(color: Colors.white)),
+            icon: const Icon(Icons.close),
           ),
         ],
       ),
@@ -99,6 +99,15 @@ class WorkoutSummaryScreen extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/'),
+              icon: const Icon(Icons.home),
+              label: const Text('Close'),
+            ),
           ),
         ],
       ),
