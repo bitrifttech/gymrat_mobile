@@ -141,7 +141,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/workout/templates',
         name: 'workout.templates',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: TemplatesScreen());
+          final extra = state.extra;
+          int? initialId;
+          if (extra is Map) {
+            final v = extra['initialTemplateId'];
+            if (v is int) initialId = v; 
+          } else if (extra is int) {
+            initialId = extra;
+          }
+          return NoTransitionPage(child: TemplatesScreen(initialTemplateId: initialId));
         },
       ),
       GoRoute(
