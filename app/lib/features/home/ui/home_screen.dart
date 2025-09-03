@@ -147,7 +147,7 @@ class HomeScreen extends ConsumerWidget {
                       if (wk != null) {
                         return ListTile(
                           leading: const Icon(Icons.play_circle_fill),
-                          title: Text('Continue Workout: ${wk.name ?? 'Workout'}'),
+                          title: Text('Today’s Workout: ${wk.name ?? 'Workout'} (In progress)'),
                           trailing: Wrap(
                             spacing: 8,
                             children: [

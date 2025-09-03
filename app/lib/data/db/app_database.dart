@@ -159,7 +159,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -199,6 +199,15 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             await m.addColumn(templateExercises, templateExercises.restSeconds);
+          }
+          if (from < 8) {
+            // Add useful indexes for performance
+            await m.createIndex(Index('idx_meals_date', 'CREATE INDEX IF NOT EXISTS idx_meals_date ON meals(date)'));
+            await m.createIndex(Index('idx_meal_items_meal', 'CREATE INDEX IF NOT EXISTS idx_meal_items_meal ON meal_items(meal_id)'));
+            await m.createIndex(Index('idx_workouts_started', 'CREATE INDEX IF NOT EXISTS idx_workouts_started ON workouts(started_at)'));
+            await m.createIndex(Index('idx_workouts_template', 'CREATE INDEX IF NOT EXISTS idx_workouts_template ON workouts(source_template_id)'));
+            await m.createIndex(Index('idx_workout_exercises_workout', 'CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout ON workout_exercises(workout_id)'));
+            await m.createIndex(Index('idx_workout_sets_we', 'CREATE INDEX IF NOT EXISTS idx_workout_sets_we ON workout_sets(workout_exercise_id)'));
           }
         },
       );

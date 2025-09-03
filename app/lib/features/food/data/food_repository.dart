@@ -560,13 +560,7 @@ final offSearchResultsProvider = FutureProvider.autoDispose.family<List<Food>, S
   return foodsList;
 });
 
-final dailyMacros7Provider = FutureProvider<List<DailyMacroTotals>>((ref) async {
-  return ref.read(foodRepositoryProvider).readDailyMacroTotals(days: 7);
-});
-
-final dailyMacros30Provider = FutureProvider<List<DailyMacroTotals>>((ref) async {
-  return ref.read(foodRepositoryProvider).readDailyMacroTotals(days: 30);
-});
+// Removed unused daily macro providers after metrics revamp
 
 final mealsForDateProvider = StreamProvider.family<List<(Meal, List<(MealItem, Food)>)>, DateTime>((ref, date) {
   return ref.read(foodRepositoryProvider).watchMealsForDay(date);

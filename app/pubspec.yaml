@@ -78,6 +78,8 @@ flutter_launcher_icons:
   image_path: ../resources/GymRat_red.png
   min_sdk_android: 21
   remove_alpha_ios: true
+  adaptive_icon_foreground: ../resources/GymRat_red.png
+  adaptive_icon_background: "#FFFFFF"
 
   # To add assets to your application, add an assets section, like this:
   # assets:

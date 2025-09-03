@@ -133,8 +133,6 @@ class _NutritionTabState extends ConsumerState<_NutritionTab> {
         if (_error != null) Text('Error: $_error'),
         if (!_loading && _error == null) ...[
           _MacroChart(data: _data, macro: _macro, start: _start, end: _end),
-          const SizedBox(height: 8),
-          _DailyMacroDebug(data: _data, start: _start, end: _end),
         ],
       ],
     );
@@ -270,39 +268,7 @@ class _MacroChart extends StatelessWidget {
   }
 }
 
-class _DailyMacroDebug extends StatelessWidget {
-  const _DailyMacroDebug({required this.data, required this.start, required this.end});
-  final List<DailyMacroTotals> data;
-  final DateTime start;
-  final DateTime end;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Debug: Daily macro rows (${start.month}/${start.day} - ${end.month}/${end.day}), count: ${data.length}',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            if (data.isEmpty) const Text('No rows'),
-            for (final d in data)
-              ListTile(
-                dense: true,
-                visualDensity: const VisualDensity(vertical: -2),
-                title: Text('${d.date.year}-${d.date.month.toString().padLeft(2,'0')}-${d.date.day.toString().padLeft(2,'0')}'),
-                subtitle: Text('kcal: ${d.calories}, P: ${d.proteinG}, C: ${d.carbsG}, F: ${d.fatsG}'),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Debug panel removed
 
 class _WorkoutsTab extends ConsumerWidget {
   const _WorkoutsTab();
