@@ -48,6 +48,61 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
             return Text(name == null ? 'Edit Template' : 'Edit Template – $name');
           },
         ),
+        actions: [
+          if (_selectedTemplateId != null)
+            IconButton(
+              tooltip: 'Rename Template',
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                final currentName = await ref.read(workoutRepositoryProvider).watchTemplates().first.then((list) {
+                  final m = list.where((t) => t.id == _selectedTemplateId).toList();
+                  return m.isNotEmpty ? m.first.name : '';
+                });
+                final newName = await showDialog<String>(
+                  context: context,
+                  builder: (ctx) {
+                    final c = TextEditingController(text: currentName);
+                    return AlertDialog(
+                      title: const Text('Rename Template'),
+                      content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Name')),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Save')),
+                      ],
+                    );
+                  },
+                );
+                if (newName != null && newName.isNotEmpty) {
+                  await ref.read(workoutRepositoryProvider).renameTemplate(templateId: _selectedTemplateId!, name: newName);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renamed')));
+                }
+              },
+            ),
+          if (_selectedTemplateId != null)
+            IconButton(
+              tooltip: 'Delete Template',
+              icon: const Icon(Icons.delete),
+              onPressed: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete template?'),
+                    content: const Text('This cannot be undone'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                    ],
+                  ),
+                );
+                if (ok == true) {
+                  await ref.read(workoutRepositoryProvider).deleteTemplate(_selectedTemplateId!);
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+        ],
       ),
       body: _selectedTemplateId == null
           ? const Center(child: Text('No template selected'))
@@ -99,7 +154,28 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(te.exerciseName, style: Theme.of(context).textTheme.titleSmall),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          initialValue: te.exerciseName,
+                                          decoration: const InputDecoration(labelText: 'Exercise name'),
+                                          onChanged: (val) async {
+                                            final v = val.trim();
+                                            if (v.isEmpty) return;
+                                            await ref.read(workoutRepositoryProvider).renameTemplateExercise(templateExerciseId: te.id, name: v);
+                                          },
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Remove',
+                                        icon: const Icon(Icons.delete_outline),
+                                        onPressed: () async {
+                                          await ref.read(workoutRepositoryProvider).deleteTemplateExercise(te.id);
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [

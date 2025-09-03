@@ -197,6 +197,12 @@ class WorkoutRepository {
     await (_db.delete(_db.workoutTemplates)..where((t) => t.id.equals(templateId))).go();
   }
 
+  Future<void> renameTemplate({required int templateId, required String name}) async {
+    await (_db.update(_db.workoutTemplates)..where((t) => t.id.equals(templateId))).write(
+      WorkoutTemplatesCompanion(name: Value(name)),
+    );
+  }
+
   Future<int> addTemplateExercise({required int templateId, required String exerciseName}) async {
     final current = await (_db.select(_db.templateExercises)
           ..where((te) => te.templateId.equals(templateId))
@@ -226,6 +232,16 @@ class WorkoutRepository {
         restSeconds: restSeconds == null ? const Value.absent() : Value(restSeconds),
       ),
     );
+  }
+
+  Future<void> renameTemplateExercise({required int templateExerciseId, required String name}) async {
+    await (_db.update(_db.templateExercises)..where((te) => te.id.equals(templateExerciseId))).write(
+      TemplateExercisesCompanion(exerciseName: Value(name)),
+    );
+  }
+
+  Future<void> deleteTemplateExercise(int templateExerciseId) async {
+    await (_db.delete(_db.templateExercises)..where((te) => te.id.equals(templateExerciseId))).go();
   }
 
   Stream<List<WorkoutTemplate>> watchTemplates() {
