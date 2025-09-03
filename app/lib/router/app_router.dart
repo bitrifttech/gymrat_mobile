@@ -15,6 +15,7 @@ import 'package:app/features/workout/ui/templates_screen.dart';
 import 'package:app/features/workout/ui/workout_detail_screen.dart';
 import 'package:app/features/metrics/ui/metrics_screen.dart';
 import 'package:app/features/workout/ui/workout_summary_screen.dart';
+import 'package:app/features/food/ui/meal_history_screen.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -57,6 +58,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (BuildContext context, GoRouterState state) {
           final id = int.parse(state.pathParameters['id']!);
           return NoTransitionPage(child: WorkoutSummaryScreen(workoutId: id));
+        },
+      ),
+      GoRoute(
+        path: '/meals/history',
+        name: 'meals.history',
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          return const NoTransitionPage(child: MealHistoryScreen());
         },
       ),
       GoRoute(

@@ -268,6 +268,31 @@ class FoodRepository {
     });
   }
 
+  Stream<MacroTotals> watchTotalsForDate(DateTime date) {
+    final day = _dateOnly(date);
+    final query = _db.customSelect(
+      'SELECT '
+      'COALESCE(SUM(mi.calories), 0) AS calories, '
+      'COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+      'COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+      'COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+      'FROM meal_items mi '
+      'JOIN meals m ON m.id = mi.meal_id '
+      'WHERE m.date = ?1',
+      variables: [Variable<DateTime>(day)],
+      readsFrom: {_db.mealItems, _db.meals},
+    );
+    return query.watchSingle().map((row) {
+      final data = row.data;
+      return MacroTotals(
+        calories: (data['calories'] as int?) ?? 0,
+        proteinG: (data['proteinG'] as int?) ?? 0,
+        carbsG: (data['carbsG'] as int?) ?? 0,
+        fatsG: (data['fatsG'] as int?) ?? 0,
+      );
+    });
+  }
+
   Future<void> updateItemQuantity({required int itemId, required double quantity}) async {
     final item = await (_db.select(_db.mealItems)..where((i) => i.id.equals(itemId))).getSingle();
     final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
@@ -459,4 +484,12 @@ final dailyMacros7Provider = FutureProvider<List<DailyMacroTotals>>((ref) async 
 
 final dailyMacros30Provider = FutureProvider<List<DailyMacroTotals>>((ref) async {
   return ref.read(foodRepositoryProvider).readDailyMacroTotals(days: 30);
+});
+
+final mealsForDateProvider = StreamProvider.family<List<(Meal, List<(MealItem, Food)>)>, DateTime>((ref, date) {
+  return ref.read(foodRepositoryProvider).watchMealsForDay(date);
+});
+
+final totalsForDateProvider = StreamProvider.family<MacroTotals, DateTime>((ref, date) {
+  return ref.read(foodRepositoryProvider).watchTotalsForDate(date);
 });
