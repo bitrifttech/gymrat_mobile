@@ -315,7 +315,6 @@ class FoodRepository {
 
   // Nutrition history (7/30 days)
   Future<List<DailyMacroTotals>> readDailyMacroTotals({required int days}) async {
-    final userId = await _getCurrentUserId();
     final today = _dateOnly(DateTime.now());
     final since = today.subtract(Duration(days: days - 1));
     final rows = await _db.customSelect(
@@ -326,10 +325,10 @@ class FoodRepository {
       '       COALESCE(SUM(mi.fats_g), 0) AS fatsG '
       'FROM meals m '
       'LEFT JOIN meal_items mi ON mi.meal_id = m.id '
-      'WHERE m.user_id = ?1 AND m.date BETWEEN ?2 AND ?3 '
+      'WHERE m.date BETWEEN ?1 AND ?2 '
       'GROUP BY m.date '
       'ORDER BY m.date ASC',
-      variables: [Variable<int>(userId), Variable<DateTime>(since), Variable<DateTime>(today)],
+      variables: [Variable<DateTime>(since), Variable<DateTime>(today)],
       readsFrom: {_db.meals, _db.mealItems},
     ).get();
 
@@ -352,7 +351,61 @@ class FoodRepository {
         calories: row == null ? 0 : (row.data['calories'] as int? ?? 0),
         proteinG: row == null ? 0 : (row.data['proteinG'] as int? ?? 0),
         carbsG: row == null ? 0 : (row.data['carbsG'] as int? ?? 0),
-        fatsG: row == null ? 0 : (row.data['fats_g'] as int? ?? (row.data['fatsG'] as int? ?? 0)),
+        fatsG: row == null ? 0 : (row.data['fatsG'] as int? ?? 0),
+      ));
+    }
+    return result;
+  }
+
+  Future<DateTime?> readEarliestMealDate() async {
+    final row = await _db.customSelect(
+      'SELECT MIN(date) AS d FROM meals',
+      readsFrom: {_db.meals},
+    ).getSingleOrNull();
+    if (row == null) return null;
+    final v = row.data['d'];
+    if (v == null) return null;
+    if (v is DateTime) return _dateOnly(v);
+    if (v is int) return _dateOnly(DateTime.fromMillisecondsSinceEpoch(v));
+    if (v is String) {
+      try { return _dateOnly(DateTime.parse(v)); } catch (_) { return null; }
+    }
+    return null;
+  }
+
+  Future<List<DailyMacroTotals>> readDailyMacrosInRange({required DateTime start, required DateTime end}) async {
+    final s = _dateOnly(start);
+    final e = _dateOnly(end);
+    final rows = await _db.customSelect(
+      'SELECT m.date AS d, '
+      '       COALESCE(SUM(mi.calories), 0) AS calories, '
+      '       COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+      '       COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+      '       COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+      'FROM meals m '
+      'LEFT JOIN meal_items mi ON mi.meal_id = m.id '
+      'WHERE m.date BETWEEN ?1 AND ?2 '
+      'GROUP BY m.date '
+      'ORDER BY m.date ASC',
+      variables: [Variable<DateTime>(s), Variable<DateTime>(e)],
+      readsFrom: {_db.meals, _db.mealItems},
+    ).get();
+    DateTime _toDate(Object? v) {
+      if (v is DateTime) return _dateOnly(v);
+      if (v is int) return _dateOnly(DateTime.fromMillisecondsSinceEpoch(v));
+      if (v is String) { try { return _dateOnly(DateTime.parse(v)); } catch (_) {} }
+      return _dateOnly(DateTime.now());
+    }
+    final map = {for (final r in rows) _toDate(r.data['d']): r};
+    final result = <DailyMacroTotals>[];
+    for (DateTime d = s; !d.isAfter(e); d = d.add(const Duration(days: 1))) {
+      final row = map[d];
+      result.add(DailyMacroTotals(
+        date: d,
+        calories: row == null ? 0 : (row.data['calories'] as int? ?? 0),
+        proteinG: row == null ? 0 : (row.data['proteinG'] as int? ?? 0),
+        carbsG: row == null ? 0 : (row.data['carbsG'] as int? ?? 0),
+        fatsG: row == null ? 0 : (row.data['fatsG'] as int? ?? 0),
       ));
     }
     return result;

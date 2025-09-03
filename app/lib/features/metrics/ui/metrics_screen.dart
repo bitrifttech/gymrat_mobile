@@ -55,94 +55,217 @@ class _MetricsScreenState extends State<MetricsScreen> with SingleTickerProvider
   }
 }
 
-class _NutritionTab extends ConsumerWidget {
+class _NutritionTab extends ConsumerStatefulWidget {
   const _NutritionTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final d7 = ref.watch(dailyMacros7Provider);
-    final d30 = ref.watch(dailyMacros30Provider);
+  ConsumerState<_NutritionTab> createState() => _NutritionTabState();
+}
+
+class _NutritionTabState extends ConsumerState<_NutritionTab> {
+  String _macro = 'calories'; // calories|protein|carbs|fats|all
+  String _range = 'week'; // week|month|all
+  List<DailyMacroTotals> _data = const [];
+  DateTime _start = DateTime.now();
+  DateTime _end = DateTime.now();
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final repo = ref.read(foodRepositoryProvider);
+      final now = DateTime.now();
+      _end = DateTime(now.year, now.month, now.day);
+      DateTime start;
+      if (_range == 'week') {
+        start = _end.subtract(const Duration(days: 6));
+      } else if (_range == 'month') {
+        start = _end.subtract(const Duration(days: 29));
+      } else {
+        final earliest = await repo.readEarliestMealDate() ?? _end.subtract(const Duration(days: 365));
+        start = earliest;
+      }
+      _start = start;
+      _data = await repo.readDailyMacrosInRange(start: start, end: _end);
+    } catch (e) {
+      _error = '$e';
+    } finally {
+      if (mounted) setState(() { _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Text('Last 7 days', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        d7.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (e, st) => Text('Error: $e'),
-          data: (list) => _CaloriesLineChart(list: list),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(label: const Text('Kcal'), selected: _macro == 'calories', onSelected: (v) { setState(() => _macro = 'calories'); _load(); }),
+            ChoiceChip(label: const Text('Protein'), selected: _macro == 'protein', onSelected: (v) { setState(() => _macro = 'protein'); _load(); }),
+            ChoiceChip(label: const Text('Carbs'), selected: _macro == 'carbs', onSelected: (v) { setState(() => _macro = 'carbs'); _load(); }),
+            ChoiceChip(label: const Text('Fats'), selected: _macro == 'fats', onSelected: (v) { setState(() => _macro = 'fats'); _load(); }),
+            ChoiceChip(label: const Text('All'), selected: _macro == 'all', onSelected: (v) { setState(() => _macro = 'all'); _load(); }),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text('Last 30 days', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        d30.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (e, st) => Text('Error: $e'),
-          data: (list) => _CaloriesLineChart(list: list),
+        Wrap(
+          spacing: 8,
+          children: [
+            FilterChip(label: const Text('Week'), selected: _range == 'week', onSelected: (v) { setState(() => _range = 'week'); _load(); }),
+            FilterChip(label: const Text('Month'), selected: _range == 'month', onSelected: (v) { setState(() => _range = 'month'); _load(); }),
+            FilterChip(label: const Text('All'), selected: _range == 'all', onSelected: (v) { setState(() => _range = 'all'); _load(); }),
+          ],
         ),
+        const SizedBox(height: 12),
+        if (_loading) const LinearProgressIndicator(),
+        if (_error != null) Text('Error: $_error'),
+        if (!_loading && _error == null) ...[
+          _MacroChart(data: _data, macro: _macro, start: _start, end: _end),
+          const SizedBox(height: 8),
+          _DailyMacroDebug(data: _data, start: _start, end: _end),
+        ],
       ],
     );
   }
 }
 
-class _CaloriesLineChart extends StatelessWidget {
-  const _CaloriesLineChart({required this.list});
-  final List<DailyMacroTotals> list;
+class _MacroChart extends StatelessWidget {
+  const _MacroChart({required this.data, required this.macro, required this.start, required this.end});
+  final List<DailyMacroTotals> data;
+  final String macro; // calories|protein|carbs|fats|all
+  final DateTime start;
+  final DateTime end;
+
+  String _kLabel(double v) { if (v >= 1000) return '${(v/1000).toStringAsFixed(0)}K'; return v.toStringAsFixed(0); }
 
   @override
   Widget build(BuildContext context) {
-    if (list.isEmpty) return const SizedBox.shrink();
-    final spots = <FlSpot>[];
+    if (data.isEmpty) return const SizedBox.shrink();
+    final series = <List<FlSpot>>[];
+    final colors = [
+      Theme.of(context).colorScheme.primary,
+      Theme.of(context).colorScheme.secondary,
+      Theme.of(context).colorScheme.tertiary,
+      Theme.of(context).colorScheme.error,
+    ];
     double maxY = 0;
-    for (int i = 0; i < list.length; i++) {
-      final v = list[i].calories.toDouble();
-      spots.add(FlSpot(i.toDouble(), v));
-      if (v > maxY) maxY = v;
+    List<String> labels = [];
+
+    List<double> valuesFor(DailyMacroTotals d) => switch (macro) {
+      'calories' => [d.calories.toDouble()],
+      'protein' => [d.proteinG.toDouble()],
+      'carbs' => [d.carbsG.toDouble()],
+      'fats' => [d.fatsG.toDouble()],
+      _ => [d.calories.toDouble(), d.proteinG.toDouble(), d.carbsG.toDouble(), d.fatsG.toDouble()],
+    };
+
+    // Build spots
+    int lines = macro == 'all' ? 4 : 1;
+    for (int l = 0; l < lines; l++) { series.add([]); }
+    for (int i = 0; i < data.length; i++) {
+      final d = data[i];
+      final vals = valuesFor(d);
+      for (int l = 0; l < lines; l++) {
+        final v = vals[l];
+        if (v > maxY) maxY = v;
+        series[l].add(FlSpot(i.toDouble(), v));
+      }
+      labels.add('${d.date.month}/${d.date.day}');
     }
+
+    final bars = <LineChartBarData>[];
+    for (int l = 0; l < series.length; l++) {
+      bars.add(LineChartBarData(
+        spots: series[l],
+        isCurved: true,
+        barWidth: 3,
+        color: colors[l % colors.length],
+        dotData: const FlDotData(show: false),
+      ));
+    }
+
     return SizedBox(
-      height: 220,
+      height: 260,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          child: LineChart(
-            LineChartData(
-              gridData: const FlGridData(show: true),
-              borderData: FlBorderData(show: true),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  barWidth: 3,
-                  color: Theme.of(context).colorScheme.primary,
-                  dotData: const FlDotData(show: false),
-                ),
-              ],
-              titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 22,
-                    getTitlesWidget: (value, meta) {
-                      final idx = value.toInt();
-                      if (idx < 0 || idx >= list.length) return const SizedBox.shrink();
-                      final d = list[idx].date;
-                      return Text('${d.month}/${d.day}', style: const TextStyle(fontSize: 10));
-                    },
-                  ),
-                ),
-              ),
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touchedSpots) => touchedSpots
-                      .map((s) => LineTooltipItem('${list[s.x.toInt()].date.month}/${list[s.x.toInt()].date.day}\n${s.y.toStringAsFixed(0)} kcal', const TextStyle()))
-                      .toList(),
-                ),
-              ),
-              minY: 0,
-              maxY: (maxY * 1.2).clamp(1, double.infinity),
+          child: LineChart(LineChartData(
+            gridData: const FlGridData(show: true, drawVerticalLine: false),
+            borderData: FlBorderData(show: true),
+            lineBarsData: bars,
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, getTitlesWidget: (v, m) => Text(_kLabel(v), style: const TextStyle(fontSize: 10)))),
+              bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 22, getTitlesWidget: (v, m) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
+                return Text(labels[idx], style: const TextStyle(fontSize: 10));
+              })),
             ),
-          ),
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (spots) => spots.map((s) {
+                  final idx = s.x.toInt();
+                  final d = data[idx];
+                  final name = switch (macro) {
+                    'calories' => 'kcal',
+                    'protein' => 'Protein g',
+                    'carbs' => 'Carbs g',
+                    'fats' => 'Fats g',
+                    _ => ['kcal','P','C','F'][spots.indexOf(s)],
+                  };
+                  return LineTooltipItem('${d.date.month}/${d.date.day}\n${s.y.toStringAsFixed(0)} $name', const TextStyle());
+                }).toList(),
+              ),
+            ),
+            minY: 0,
+            maxY: (maxY * 1.2).clamp(1, double.infinity),
+          )),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyMacroDebug extends StatelessWidget {
+  const _DailyMacroDebug({required this.data, required this.start, required this.end});
+  final List<DailyMacroTotals> data;
+  final DateTime start;
+  final DateTime end;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Debug: Daily macro rows (${start.month}/${start.day} - ${end.month}/${end.day}), count: ${data.length}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            if (data.isEmpty) const Text('No rows'),
+            for (final d in data)
+              ListTile(
+                dense: true,
+                visualDensity: const VisualDensity(vertical: -2),
+                title: Text('${d.date.year}-${d.date.month.toString().padLeft(2,'0')}-${d.date.day.toString().padLeft(2,'0')}'),
+                subtitle: Text('kcal: ${d.calories}, P: ${d.proteinG}, C: ${d.carbsG}, F: ${d.fatsG}'),
+              ),
+          ],
         ),
       ),
     );
