@@ -83,7 +83,6 @@ class HomeScreen extends ConsumerWidget {
                   ElevatedButton.icon(onPressed: () => context.pushNamed('meals.history'), icon: const Icon(Icons.calendar_month), label: const Text('Meal History')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('food.log'), icon: const Icon(Icons.restaurant), label: const Text('Log Food')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('meals.today'), icon: const Icon(Icons.fastfood), label: const Text("Today's Meals")),
-                  ElevatedButton.icon(onPressed: () => context.pushNamed('workout.active'), icon: const Icon(Icons.play_arrow), label: const Text('Active Workout')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('workout.history'), icon: const Icon(Icons.history), label: const Text('Workout History')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('workout.templates'), icon: const Icon(Icons.article), label: const Text('Templates')),
                   ElevatedButton.icon(onPressed: () => context.pushNamed('workout.schedule'), icon: const Icon(Icons.calendar_today), label: const Text('Schedule')),
@@ -152,7 +151,7 @@ class HomeScreen extends ConsumerWidget {
                           trailing: Wrap(
                             spacing: 8,
                             children: [
-                              TextButton(onPressed: () => context.pushNamed('workout.active'), child: const Text('Continue')),
+                              TextButton(onPressed: () => context.push('/workout/detail/${wk.id}'), child: const Text('Edit')),
                               IconButton(
                                 tooltip: 'Delete',
                                 icon: const Icon(Icons.delete_outline),
@@ -181,9 +180,9 @@ class HomeScreen extends ConsumerWidget {
                             title: Text('Today’s Workout: ${tpl.name}'),
                             trailing: ElevatedButton(
                               onPressed: () async {
-                                await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
+                                final wkId = await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
                                 if (!context.mounted) return;
-                                context.pushNamed('workout.active');
+                                if (wkId != null) context.push('/workout/detail/$wkId');
                               },
                               child: const Text('Start'),
                             ),

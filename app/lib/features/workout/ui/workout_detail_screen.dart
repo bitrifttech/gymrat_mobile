@@ -80,7 +80,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset (cleared values)')));
                   }
                   if (!ctx.mounted) return;
-                  context.goNamed('workout.active');
+                  context.goNamed('workout.detail', pathParameters: {'id': workoutId.toString()});
                 },
               ),
             ],
