@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/features/workout/data/workout_repository.dart';
 
 class BottomNavShell extends StatelessWidget {
   const BottomNavShell({super.key, required this.shell});
@@ -69,7 +71,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
       body: TabBarView(
         controller: _tabController,
         children: [
-          _NavButton(label: 'Open Templates', onTap: () => context.pushNamed('workout.templates')),
+          const _TemplatesTab(),
           _NavButton(label: 'Open Schedule', onTap: () => context.pushNamed('workout.schedule')),
           _NavButton(label: 'Edit Profile & Goals', onTap: () => context.pushNamed('settings.edit')),
           _NavButton(label: 'Add Task (stub)', onTap: () => context.pushNamed('task.add')),
@@ -90,6 +92,84 @@ class _NavButton extends StatelessWidget {
         onPressed: onTap,
         child: Text(label),
       ),
+    );
+  }
+}
+
+class _TemplatesTab extends ConsumerWidget {
+  const _TemplatesTab();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templates = ref.watch(templatesProvider);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final name = await showDialog<String>(
+                  context: context,
+                  builder: (ctx) {
+                    final ctrl = TextEditingController();
+                    return AlertDialog(
+                      title: const Text('New Template'),
+                      content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Template name')),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Create')),
+                      ],
+                    );
+                  },
+                );
+                if (name == null || name.isEmpty) return;
+                final id = await ref.read(workoutRepositoryProvider).createTemplate(name);
+                if (!context.mounted) return;
+                context.pushNamed('workout.templates', extra: {'initialTemplateId': id});
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Template'),
+            ),
+          ),
+        ),
+        Expanded(
+          child: templates.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error: $e')),
+            data: (list) {
+              if (list.isEmpty) return const Center(child: Text('No templates'));
+              return ListView.builder(
+                itemCount: list.length,
+                itemBuilder: (ctx, i) {
+                  final t = list[i];
+                  return ListTile(
+                    leading: const Icon(Icons.article),
+                    title: Text(t.name),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Edit',
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => context.pushNamed('workout.templates', extra: {'initialTemplateId': t.id}),
+                        ),
+                        IconButton(
+                          tooltip: 'Delete',
+                          icon: const Icon(Icons.delete),
+                          onPressed: () async {
+                            await ref.read(workoutRepositoryProvider).deleteTemplate(t.id);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

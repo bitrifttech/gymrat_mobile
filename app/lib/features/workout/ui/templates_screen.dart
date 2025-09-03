@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 
 class TemplatesScreen extends ConsumerStatefulWidget {
-  const TemplatesScreen({super.key});
+  const TemplatesScreen({super.key, this.initialTemplateId});
+  final int? initialTemplateId;
 
   @override
   ConsumerState<TemplatesScreen> createState() => _TemplatesScreenState();
@@ -13,6 +14,12 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   final _templateCtrl = TextEditingController();
   final _exerciseCtrl = TextEditingController();
   int? _selectedTemplateId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTemplateId = widget.initialTemplateId;
+  }
 
   @override
   void dispose() {
