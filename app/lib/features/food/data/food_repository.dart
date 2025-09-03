@@ -60,7 +60,7 @@ class FoodRepository {
 
   Future<int> _getCurrentUserId() async {
     final u = await (_db.select(_db.users)
-          ..orderBy([(u) => OrderingTerm.asc(u.id)])
+          ..orderBy([(u) => OrderingTerm.desc(u.createdAt)])
           ..limit(1))
         .getSingleOrNull();
     if (u == null) {
@@ -307,7 +307,17 @@ class FoodRepository {
       variables: [Variable<int>(userId), Variable<DateTime>(since), Variable<DateTime>(today)],
       readsFrom: {_db.meals, _db.mealItems},
     ).get();
-    final map = {for (final r in rows) _dateOnly(r.data['d'] as DateTime): r};
+
+    DateTime _toDate(Object? v) {
+      if (v is DateTime) return _dateOnly(v);
+      if (v is int) return _dateOnly(DateTime.fromMillisecondsSinceEpoch(v));
+      if (v is String) {
+        try { return _dateOnly(DateTime.parse(v)); } catch (_) {}
+      }
+      return today;
+    }
+
+    final map = {for (final r in rows) _toDate(r.data['d']): r};
     final result = <DailyMacroTotals>[];
     for (int i = 0; i < days; i++) {
       final d = since.add(Duration(days: i));
@@ -317,7 +327,7 @@ class FoodRepository {
         calories: row == null ? 0 : (row.data['calories'] as int? ?? 0),
         proteinG: row == null ? 0 : (row.data['proteinG'] as int? ?? 0),
         carbsG: row == null ? 0 : (row.data['carbsG'] as int? ?? 0),
-        fatsG: row == null ? 0 : (row.data['fatsG'] as int? ?? 0),
+        fatsG: row == null ? 0 : (row.data['fats_g'] as int? ?? (row.data['fatsG'] as int? ?? 0)),
       ));
     }
     return result;
