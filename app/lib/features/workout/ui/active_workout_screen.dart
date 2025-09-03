@@ -115,6 +115,14 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     });
   }
 
+  void _stopRestTimer(int workoutExerciseId) {
+    _timersByWorkoutExerciseId[workoutExerciseId]?.cancel();
+    setState(() {
+      _timersByWorkoutExerciseId[workoutExerciseId] = null;
+      _remainingSecondsByWorkoutExerciseId[workoutExerciseId] = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final active = ref.watch(activeWorkoutProvider);
@@ -220,10 +228,18 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                                                 const SizedBox(width: 8),
                                                 OutlinedButton.icon(
                                                   onPressed: () {
-                                                    _startRestTimer(workoutExerciseId: we.id, seconds: restSec);
+                                                    if ((
+                                                      _timersByWorkoutExerciseId[we.id] != null && (_remainingSecondsByWorkoutExerciseId[we.id] ?? 0) > 0
+                                                    )) {
+                                                      _stopRestTimer(we.id);
+                                                    } else {
+                                                      _startRestTimer(workoutExerciseId: we.id, seconds: restSec);
+                                                    }
                                                   },
                                                   icon: const Icon(Icons.timer),
-                                                  label: Text(remaining > 0 ? 'Restart Rest' : 'Start Rest (${restSec}s)'),
+                                                  label: Text((
+                                                    _timersByWorkoutExerciseId[we.id] != null && (_remainingSecondsByWorkoutExerciseId[we.id] ?? 0) > 0
+                                                  ) ? 'Stop' : 'Start (${restSec}s)'),
                                                 ),
                                               ],
                                             );

@@ -222,12 +222,12 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
                     ),
                     DropdownButtonFormField<String>(
                       initialValue: _activity,
-                      decoration: const InputDecoration(labelText: 'Activity Level'),
+                      decoration: const InputDecoration(labelText: 'Activity Level', helperText: 'Sedentary: little/no exercise • Lightly: 1-3 days/wk • Active: 3-5 days/wk • Very Active: 6-7 days/wk'),
                       items: const [
-                        DropdownMenuItem(value: 'Sedentary', child: Text('Sedentary')),
-                        DropdownMenuItem(value: 'Lightly Active', child: Text('Lightly Active')),
-                        DropdownMenuItem(value: 'Active', child: Text('Active')),
-                        DropdownMenuItem(value: 'Very Active', child: Text('Very Active')),
+                        DropdownMenuItem(value: 'Sedentary', child: Text('Sedentary (little/no exercise)')),
+                        DropdownMenuItem(value: 'Lightly Active', child: Text('Lightly Active (1–3 days/week)')),
+                        DropdownMenuItem(value: 'Active', child: Text('Active (3–5 days/week)')),
+                        DropdownMenuItem(value: 'Very Active', child: Text('Very Active (6–7 days/week)')),
                       ],
                       onChanged: (v) => setState(() => _activity = v ?? 'Active'),
                     ),

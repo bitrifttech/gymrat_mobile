@@ -195,13 +195,6 @@ class HomeScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 12),
-              Text('Workout', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              const ListTile(
-                leading: Icon(Icons.fitness_center),
-                title: Text('No workout scheduled'),
-                subtitle: Text('Schedule or start a custom workout.'),
-              ),
             ],
           );
         },
