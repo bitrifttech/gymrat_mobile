@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math' as math;
 
 class MetricsScreen extends StatefulWidget {
   const MetricsScreen({super.key});
@@ -149,6 +150,29 @@ class _MacroChart extends StatelessWidget {
 
   String _kLabel(double v) { if (v >= 1000) return '${(v/1000).toStringAsFixed(0)}K'; return v.toStringAsFixed(0); }
 
+  (double axisMax, double interval) _niceAxis(double maxVal) {
+    if (maxVal <= 0) return (1, 0.25);
+    final desiredTicks = 5;
+    final raw = maxVal / desiredTicks;
+    final exp = (raw == 0) ? 0 : (math.log(raw) / 2.302585092994046).floor(); // log10
+    final mag = pow10(exp);
+    final f = raw / mag;
+    double step;
+    if (f < 1.5) step = 1 * mag;
+    else if (f < 3) step = 2 * mag;
+    else if (f < 7) step = 5 * mag;
+    else step = 10 * mag;
+    final axisMax = (maxVal / step).ceil() * step;
+    return (axisMax, step);
+  }
+
+  double pow10(int exp) {
+    double r = 1;
+    if (exp > 0) { for (int i = 0; i < exp; i++) { r *= 10; } }
+    if (exp < 0) { for (int i = 0; i > exp; i--) { r /= 10; } }
+    return r;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (data.isEmpty) return const SizedBox.shrink();
@@ -195,6 +219,10 @@ class _MacroChart extends StatelessWidget {
       ));
     }
 
+    final axis = _niceAxis(maxY);
+    final chartMaxY = axis.$1;
+    final interval = axis.$2;
+
     return SizedBox(
       height: 260,
       child: Card(
@@ -207,7 +235,10 @@ class _MacroChart extends StatelessWidget {
             titlesData: FlTitlesData(
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, getTitlesWidget: (v, m) => Text(_kLabel(v), style: const TextStyle(fontSize: 10)))),
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 44, interval: interval, getTitlesWidget: (v, m) {
+                if (v >= chartMaxY - 1e-6) return const SizedBox.shrink();
+                return Text(_kLabel(v), style: const TextStyle(fontSize: 10));
+              })),
               bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 22, getTitlesWidget: (v, m) {
                 final idx = v.toInt();
                 if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
@@ -231,7 +262,7 @@ class _MacroChart extends StatelessWidget {
               ),
             ),
             minY: 0,
-            maxY: (maxY * 1.2).clamp(1, double.infinity),
+            maxY: chartMaxY,
           )),
         ),
       ),
@@ -340,6 +371,22 @@ class _WeeklyVolumeBarChart extends StatelessWidget {
         BarChartRodData(toY: v, color: Theme.of(context).colorScheme.primary, width: 16, borderRadius: BorderRadius.circular(4)),
       ]));
     }
+    double pow10(int exp) { double r = 1; if (exp > 0) { for (int i = 0; i < exp; i++) { r *= 10; } } if (exp < 0) { for (int i = 0; i > exp; i--) { r /= 10; } } return r; }
+    (double axisMax, double interval) niceAxis(double maxVal) {
+      if (maxVal <= 0) return (1, 0.25);
+      final desiredTicks = 4;
+      final raw = maxVal / desiredTicks;
+      final exp = (raw == 0) ? 0 : (math.log(raw) / 2.302585092994046).floor();
+      final mag = pow10(exp);
+      final f = raw / mag;
+      double step;
+      if (f < 1.5) step = 1 * mag; else if (f < 3) step = 2 * mag; else if (f < 7) step = 5 * mag; else step = 10 * mag;
+      final axisMax = (maxVal / step).ceil() * step;
+      return (axisMax, step);
+    }
+    final axis = niceAxis(maxY);
+    final chartMaxY = axis.$1;
+    final interval = axis.$2;
     return SizedBox(
       height: 220,
       child: Card(
@@ -351,7 +398,11 @@ class _WeeklyVolumeBarChart extends StatelessWidget {
               borderData: FlBorderData(show: true),
               barGroups: bars,
               titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, interval: interval, getTitlesWidget: (v, m) {
+                  if (v >= chartMaxY - 1e-6) return const SizedBox.shrink();
+                  String label; if (v >= 1000) { label = '${(v/1000).toStringAsFixed(0)}K'; } else { label = v.toStringAsFixed(0); }
+                  return Text(label, style: const TextStyle(fontSize: 10));
+                })),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
@@ -371,7 +422,7 @@ class _WeeklyVolumeBarChart extends StatelessWidget {
                   ),
                 ),
               ),
-              maxY: (maxY * 1.2).clamp(1, double.infinity),
+              maxY: chartMaxY,
             ),
           ),
         ),
@@ -396,6 +447,22 @@ class _TopExercisesBarChart extends StatelessWidget {
         BarChartRodData(toY: v, color: Theme.of(context).colorScheme.secondary, width: 16, borderRadius: BorderRadius.circular(4)),
       ]));
     }
+    double pow10(int exp) { double r = 1; if (exp > 0) { for (int i = 0; i < exp; i++) { r *= 10; } } if (exp < 0) { for (int i = 0; i > exp; i--) { r /= 10; } } return r; }
+    (double axisMax, double interval) niceAxis(double maxVal) {
+      if (maxVal <= 0) return (1, 0.25);
+      final desiredTicks = 4;
+      final raw = maxVal / desiredTicks;
+      final exp = (raw == 0) ? 0 : (math.log(raw) / 2.302585092994046).floor();
+      final mag = pow10(exp);
+      final f = raw / mag;
+      double step;
+      if (f < 1.5) step = 1 * mag; else if (f < 3) step = 2 * mag; else if (f < 7) step = 5 * mag; else step = 10 * mag;
+      final axisMax = (maxVal / step).ceil() * step;
+      return (axisMax, step);
+    }
+    final axis = niceAxis(maxY);
+    final chartMaxY = axis.$1;
+    final interval = axis.$2;
     return SizedBox(
       height: 220,
       child: Card(
@@ -407,7 +474,11 @@ class _TopExercisesBarChart extends StatelessWidget {
               borderData: FlBorderData(show: true),
               barGroups: bars,
               titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, interval: interval, getTitlesWidget: (v, m) {
+                  if (v >= chartMaxY - 1e-6) return const SizedBox.shrink();
+                  String label; if (v >= 1000) { label = '${(v/1000).toStringAsFixed(0)}K'; } else { label = v.toStringAsFixed(0); }
+                  return SizedBox(width: 40, child: Text(label, style: const TextStyle(fontSize: 10)));
+                })),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
@@ -428,7 +499,7 @@ class _TopExercisesBarChart extends StatelessWidget {
                   ),
                 ),
               ),
-              maxY: (maxY * 1.2).clamp(1, double.infinity),
+              maxY: chartMaxY,
             ),
           ),
         ),
