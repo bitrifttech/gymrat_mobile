@@ -77,23 +77,108 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
           const _TemplatesTab(),
           const ScheduleScreen(),
           const EditSettingsScreen(),
-          _NavButton(label: 'Add Task (stub)', onTap: () => context.pushNamed('task.add')),
+          const TasksManageTab(),
         ],
       ),
     );
   }
 }
 
-class _NavButton extends StatelessWidget {
-  const _NavButton({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
+// _NavButton removed (unused)
+
+class TasksManageTab extends ConsumerStatefulWidget {
+  const TasksManageTab({super.key});
+  @override
+  ConsumerState<TasksManageTab> createState() => _TasksManageTabState();
+}
+
+class _TasksManageTabState extends ConsumerState<TasksManageTab> {
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton(
-        onPressed: onTap,
-        child: Text(label),
+    final all = ref.watch(allTasksProvider);
+    final assignments = ref.watch(taskAssignmentsProvider);
+    return all.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text('Error: $e')),
+      data: (list) => assignments.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, st) => Center(child: Text('Error: $e')),
+        data: (map) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final title = await showDialog<String>(
+                  context: context,
+                  builder: (ctx) {
+                    final c = TextEditingController();
+                    return AlertDialog(
+                      title: const Text('New Task'),
+                      content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Title')),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Create')),
+                      ],
+                    );
+                  },
+                );
+                if (title != null && title.isNotEmpty) {
+                  await ref.read(tasksRepositoryProvider).createTask(title: title);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task created')));
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Task'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (final t in list)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.checklist),
+                title: Text(t.title),
+                subtitle: Wrap(
+                  spacing: 6,
+                  children: [
+                    for (int d = 1; d <= 7; d++)
+                      FilterChip(
+                        label: Text(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d-1]),
+                        selected: (map[t.id] ?? const {}).contains(d),
+                        onSelected: (sel) async {
+                          if (sel) {
+                            await ref.read(tasksRepositoryProvider).assignTaskToDay(taskId: t.id, dayOfWeek: d);
+                          } else {
+                            await ref.read(tasksRepositoryProvider).unassignTaskFromDay(taskId: t.id, dayOfWeek: d);
+                          }
+                        },
+                      ),
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete task?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                        ],
+                      ),
+                    );
+                    if (ok == true) {
+                      await ref.read(tasksRepositoryProvider).deleteTask(t.id);
+                    }
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
       ),
     );
   }

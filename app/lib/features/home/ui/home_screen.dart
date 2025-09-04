@@ -90,21 +90,39 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Consumer(builder: (context, ref, _) {
                 final tasksToday = ref.watch(tasksForTodayProvider);
+                final completed = ref.watch(completedTodayProvider);
                 return tasksToday.when(
                   loading: () => const SizedBox.shrink(),
                   error: (e, st) => const SizedBox.shrink(),
                   data: (list) {
                     if (list.isEmpty) return const SizedBox.shrink();
-                    return Card(
-                      child: Column(
-                        children: [
-                          for (final t in list)
-                            ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.check_box_outline_blank),
-                              title: Text(t.title),
-                            ),
-                        ],
+                    return completed.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (e, st) => const SizedBox.shrink(),
+                      data: (done) => Card(
+                        child: Column(
+                          children: [
+                            for (final t in list)
+                              CheckboxListTile(
+                                dense: true,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                value: done.contains(t.id),
+                                title: Text(
+                                  t.title,
+                                  style: done.contains(t.id)
+                                      ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)
+                                      : null,
+                                ),
+                                onChanged: (v) async {
+                                  if (v == true) {
+                                    await ref.read(tasksRepositoryProvider).markTaskDoneForDate(taskId: t.id, date: DateTime.now());
+                                  } else {
+                                    await ref.read(tasksRepositoryProvider).unmarkTaskDoneForDate(taskId: t.id, date: DateTime.now());
+                                  }
+                                },
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },

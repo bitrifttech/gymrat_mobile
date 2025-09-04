@@ -7,6 +7,8 @@ class TasksRepository {
   TasksRepository(this._db);
   final AppDatabase _db;
 
+  DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
   Future<int> _getCurrentUserId() async {
     final u = await (_db.select(_db.users)
           ..orderBy([(u) => OrderingTerm.asc(u.id)])
@@ -62,6 +64,18 @@ class TasksRepository {
         .go();
   }
 
+  Future<void> clearDay(int dayOfWeek) async {
+    final userId = await _getCurrentUserId();
+    await (_db.delete(_db.taskSchedule)..where((ts) => ts.userId.equals(userId) & ts.dayOfWeek.equals(dayOfWeek))).go();
+  }
+
+  Future<List<Task>> readTasksForDay(int dayOfWeek) async {
+    final sched = await (_db.select(_db.taskSchedule)..where((ts) => ts.dayOfWeek.equals(dayOfWeek))).get();
+    if (sched.isEmpty) return [];
+    final ids = sched.map((s) => s.taskId).toList();
+    return (_db.select(_db.tasks)..where((t) => t.id.isIn(ids))).get();
+  }
+
   // Queries
   Stream<List<Task>> watchAllTasks() {
     return (_db.select(_db.tasks)..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).watch();
@@ -84,6 +98,53 @@ class TasksRepository {
     final today = DateTime.now().weekday; // 1..7
     return watchTasksForDay(today);
   }
+
+  // Completion
+  Future<void> markTaskDoneForDate({required int taskId, required DateTime date}) async {
+    final userId = await _getCurrentUserId();
+    final d = _dateOnly(date);
+    final existing = await (_db.select(_db.taskLog)
+          ..where((tl) => tl.userId.equals(userId) & tl.taskId.equals(taskId) & tl.date.equals(d)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await _db.into(_db.taskLog).insert(TaskLogCompanion.insert(
+            userId: userId,
+            taskId: taskId,
+            date: d,
+            completedAt: Value(DateTime.now()),
+          ));
+    } else {
+      await (_db.update(_db.taskLog)
+            ..where((tl) => tl.id.equals(existing.id)))
+          .write(TaskLogCompanion(completedAt: Value(DateTime.now())));
+    }
+  }
+
+  Future<void> unmarkTaskDoneForDate({required int taskId, required DateTime date}) async {
+    final userId = await _getCurrentUserId();
+    final d = _dateOnly(date);
+    await (_db.delete(_db.taskLog)
+          ..where((tl) => tl.userId.equals(userId) & tl.taskId.equals(taskId) & tl.date.equals(d)))
+        .go();
+  }
+
+  Stream<Set<int>> watchCompletedTaskIdsForDate(DateTime date) {
+    final d = _dateOnly(date);
+    return (_db.select(_db.taskLog)..where((tl) => tl.date.equals(d) & tl.completedAt.isNotNull()))
+        .watch()
+        .map((rows) => rows.map((r) => r.taskId).toSet());
+  }
+
+  // Assignments map: taskId -> set of days
+  Stream<Map<int, Set<int>>> watchTaskAssignments() {
+    return (_db.select(_db.taskSchedule)).watch().map((rows) {
+      final map = <int, Set<int>>{};
+      for (final r in rows) {
+        map.putIfAbsent(r.taskId, () => <int>{}).add(r.dayOfWeek);
+      }
+      return map;
+    });
+  }
 }
 
 final tasksRepositoryProvider = Provider<TasksRepository>((ref) {
@@ -101,6 +162,14 @@ final tasksForDayProvider = StreamProvider.family<List<Task>, int>((ref, day) {
 
 final tasksForTodayProvider = StreamProvider<List<Task>>((ref) {
   return ref.read(tasksRepositoryProvider).watchTasksForToday();
+});
+
+final taskAssignmentsProvider = StreamProvider<Map<int, Set<int>>>((ref) {
+  return ref.read(tasksRepositoryProvider).watchTaskAssignments();
+});
+
+final completedTodayProvider = StreamProvider<Set<int>>((ref) {
+  return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForDate(DateTime.now());
 });
 
 
