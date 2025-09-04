@@ -138,6 +138,29 @@ class WorkoutSchedule extends Table {
   IntColumn get templateId => integer().customConstraint('NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE')();
 }
 
+class Tasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get title => text()();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class TaskSchedule extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  IntColumn get taskId => integer().customConstraint('NOT NULL REFERENCES tasks(id) ON DELETE CASCADE')();
+  IntColumn get dayOfWeek => integer()(); // 1=Mon..7=Sun
+}
+
+class TaskLog extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  IntColumn get taskId => integer().customConstraint('NOT NULL REFERENCES tasks(id) ON DELETE CASCADE')();
+  DateTimeColumn get date => dateTime()(); // day resolution
+  DateTimeColumn get completedAt => dateTime().nullable()();
+}
+
 @DriftDatabase(
   tables: [
     Settings,
@@ -153,13 +176,16 @@ class WorkoutSchedule extends Table {
     WorkoutTemplates,
     TemplateExercises,
     WorkoutSchedule,
+    Tasks,
+    TaskSchedule,
+    TaskLog,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -208,6 +234,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createIndex(Index('idx_workouts_template', 'CREATE INDEX IF NOT EXISTS idx_workouts_template ON workouts(source_template_id)'));
             await m.createIndex(Index('idx_workout_exercises_workout', 'CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout ON workout_exercises(workout_id)'));
             await m.createIndex(Index('idx_workout_sets_we', 'CREATE INDEX IF NOT EXISTS idx_workout_sets_we ON workout_sets(workout_exercise_id)'));
+          }
+          if (from < 9) {
+            await m.createTable(this.tasks);
+            await m.createTable(this.taskSchedule);
+            await m.createTable(this.taskLog);
+            await m.createIndex(Index('idx_task_schedule_day', 'CREATE INDEX IF NOT EXISTS idx_task_schedule_day ON task_schedule(day_of_week)'));
+            await m.createIndex(Index('idx_task_log_date', 'CREATE INDEX IF NOT EXISTS idx_task_log_date ON task_log(date)'));
           }
         },
       );

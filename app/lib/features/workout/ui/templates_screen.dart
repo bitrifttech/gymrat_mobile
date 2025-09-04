@@ -338,12 +338,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (int i = 0; i < 7; i++)
+                      for (int i = 0; i < 7; i++) ...[
                         ChoiceChip(
-                          label: Text(days[i]),
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(days[i]),
+                              const SizedBox(width: 4),
+                              if (dayToTemplateId.containsKey(i + 1))
+                                const CircleAvatar(radius: 3, backgroundColor: Colors.green),
+                            ],
+                          ),
                           selected: _selectedDay == i + 1,
                           onSelected: (_) => setState(() => _selectedDay = i + 1),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 16),
