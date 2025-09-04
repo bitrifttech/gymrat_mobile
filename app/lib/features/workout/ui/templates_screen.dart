@@ -158,7 +158,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                     data: (list) {
                       if (list.isEmpty) return const Center(child: Text('No exercises'));
                       return ReorderableListView.builder(
-                        buildDefaultDragHandles: true,
+                        buildDefaultDragHandles: false,
                         itemCount: list.length,
                         onReorder: (oldIndex, newIndex) async {
                           if (newIndex > oldIndex) newIndex -= 1;
@@ -186,6 +186,13 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                                 children: [
                                   Row(
                                     children: [
+                                      ReorderableDragStartListener(
+                                        index: i,
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                          child: Icon(Icons.drag_handle),
+                                        ),
+                                      ),
                                       Expanded(
                                         child: TextFormField(
                                           initialValue: te.exerciseName,
