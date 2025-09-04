@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
+import 'package:app/features/workout/ui/templates_screen.dart';
 
 class BottomNavShell extends StatelessWidget {
   const BottomNavShell({super.key, required this.shell});
@@ -72,7 +73,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
         controller: _tabController,
         children: [
           const _TemplatesTab(),
-          _NavButton(label: 'Open Schedule', onTap: () => context.pushNamed('workout.schedule')),
+          const ScheduleScreen(),
           _NavButton(label: 'Edit Profile & Goals', onTap: () => context.pushNamed('settings.edit')),
           _NavButton(label: 'Add Task (stub)', onTap: () => context.pushNamed('task.add')),
         ],
