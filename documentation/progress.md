@@ -125,3 +125,13 @@
   - Prevent duplicate route names and add Close button on workout summary.
 
 -- UI ReOrg and Tweaks closed. --
+
+## Milestone 7 (Tasks)
+- Schema & Migration (v9): Added `tasks`, `task_schedule`, and `task_log` with indexes for day/date.
+- Repository: CRUD for tasks; assign/unassign to days; streams for all tasks, per-day, and today's tasks; completion mark/unmark for a date; assignment map stream.
+- Configure > Tasks: Manage tasks (add/delete) and assign days via chips with live selection state.
+- Configure > Schedule: Day chips show task counts and workout indicator; Clear day removes both workout and tasks; Copy day copies both workout and tasks.
+- Home: Today’s Tasks section with mark-done toggle persisted to `task_log` (strike-through styling on completed).
+- QA: Verified cross-tab sync (Tasks ↔ Schedule), copy/clear behavior, and Home completion toggles.
+
+-- Milestone 7 closed. --
