@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/workout/ui/templates_screen.dart';
+import 'package:app/features/settings/ui/edit_settings_screen.dart';
 
 class BottomNavShell extends StatelessWidget {
   const BottomNavShell({super.key, required this.shell});
@@ -74,7 +75,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
         children: [
           const _TemplatesTab(),
           const ScheduleScreen(),
-          _NavButton(label: 'Edit Profile & Goals', onTap: () => context.pushNamed('settings.edit')),
+          const EditSettingsScreen(),
           _NavButton(label: 'Add Task (stub)', onTap: () => context.pushNamed('task.add')),
         ],
       ),
