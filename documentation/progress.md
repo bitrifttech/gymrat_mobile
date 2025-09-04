@@ -106,3 +106,22 @@
   - Removed unused daily macro providers after metrics revamp.
 
 -- Housekeeping & Polish closed. --
+
+## UI ReOrg and Tweaks
+- Navigation:
+  - Added bottom navigation (Home, Meals, Workouts, Metrics, Configure).
+  - Configure screen converted to tabs (Templates, Schedule, Profile, Tasks) with inline editors.
+- Templates:
+  - Full-screen template editor (no side list): inline template rename, per-exercise rename, delete with confirm.
+  - Drag-reorder exercises with persisted order (updates `orderIndex`).
+- Schedule:
+  - Day-first editor with mobile-friendly day chips, per-day workout template picker, Clear and Copy-to-days actions.
+  - Tasks are stubbed locally in UI; persistence deferred to next milestone.
+- Profile:
+  - Embedded editor in Configure tab; save shows snackbar when embedded (no pop crash).
+- Home:
+  - Quick Actions trimmed to Log Food, Today’s Meals, Add Task.
+- Fixes/Polish:
+  - Prevent duplicate route names and add Close button on workout summary.
+
+-- UI ReOrg and Tweaks closed. --
