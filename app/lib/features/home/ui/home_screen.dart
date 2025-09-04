@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'widgets/macro_ring.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
+import 'package:app/features/tasks/data/tasks_repository.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -87,6 +88,28 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Text('Today’s Tasks', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
+              Consumer(builder: (context, ref, _) {
+                final tasksToday = ref.watch(tasksForTodayProvider);
+                return tasksToday.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (list) {
+                    if (list.isEmpty) return const SizedBox.shrink();
+                    return Card(
+                      child: Column(
+                        children: [
+                          for (final t in list)
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.check_box_outline_blank),
+                              title: Text(t.title),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              }),
               isCompletedToday.when(
                 loading: () => const SizedBox.shrink(),
                 error: (e, st) => const SizedBox.shrink(),

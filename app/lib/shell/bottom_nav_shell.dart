@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/workout/ui/templates_screen.dart';
 import 'package:app/features/settings/ui/edit_settings_screen.dart';
+import 'package:app/features/tasks/data/tasks_repository.dart';
 
 class BottomNavShell extends StatelessWidget {
   const BottomNavShell({super.key, required this.shell});

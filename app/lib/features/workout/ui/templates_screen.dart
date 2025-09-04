@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
+import 'package:app/features/tasks/data/tasks_repository.dart';
 
 class TemplatesScreen extends ConsumerStatefulWidget {
   const TemplatesScreen({super.key, this.initialTemplateId});
@@ -391,44 +392,62 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   const SizedBox(height: 24),
                   Text('Tasks', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Card(
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < (_tasksByDay[_selectedDay]?.length ?? 0); i++)
-                          ListTile(
-                            leading: const Icon(Icons.checklist),
-                            title: Text(_tasksByDay[_selectedDay]![i]),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => setState(() => _tasksByDay[_selectedDay]!.removeAt(i)),
-                            ),
+                  Consumer(builder: (context, ref, _) {
+                    final tasks = ref.watch(tasksForDayProvider(_selectedDay));
+                    return tasks.when(
+                      loading: () => const Card(child: Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())),
+                      error: (e, st) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Text('Error: $e'))),
+                      data: (list) {
+                        return Card(
+                          child: Column(
+                            children: [
+                              for (final t in list)
+                                ListTile(
+                                  leading: const Icon(Icons.checklist),
+                                  title: Text(t.title),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    tooltip: 'Unassign',
+                                    onPressed: () async {
+                                      await ref.read(tasksRepositoryProvider).unassignTaskFromDay(taskId: t.id, dayOfWeek: _selectedDay);
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task unassigned')));
+                                    },
+                                  ),
+                                ),
+                              ListTile(
+                                leading: const Icon(Icons.add),
+                                title: const Text('Add Task'),
+                                onTap: () async {
+                                  final title = await showDialog<String>(
+                                    context: context,
+                                    builder: (ctx) {
+                                      final c = TextEditingController();
+                                      return AlertDialog(
+                                        title: const Text('Add Task'),
+                                        content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Title')),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Add')),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                  if (title != null && title.isNotEmpty) {
+                                    final repo = ref.read(tasksRepositoryProvider);
+                                    final id = await repo.createTask(title: title);
+                                    await repo.assignTaskToDay(taskId: id, dayOfWeek: _selectedDay);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task added')));
+                                  }
+                                },
+                              ),
+                            ],
                           ),
-                        ListTile(
-                          leading: const Icon(Icons.add),
-                          title: const Text('Add Task'),
-                          onTap: () async {
-                            final title = await showDialog<String>(
-                              context: context,
-                              builder: (ctx) {
-                                final c = TextEditingController();
-                                return AlertDialog(
-                                  title: const Text('Add Task'),
-                                  content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Title')),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                                    TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Add')),
-                                  ],
-                                );
-                              },
-                            );
-                            if (title != null && title.isNotEmpty) {
-                              setState(() => _tasksByDay[_selectedDay]!.add(title));
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                        );
+                      },
+                    );
+                  }),
                   const SizedBox(height: 16),
                   Row(
                     children: [
