@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'dart:math' as math;
 
 class MetricsScreen extends StatefulWidget {
@@ -278,6 +279,7 @@ class _WorkoutsTab extends ConsumerWidget {
     final weekly = ref.watch(weeklyVolumeProvider);
     final topEx = ref.watch(topExerciseVolumeProvider);
     final best = ref.watch(bestOneRmProvider);
+    final habits7 = ref.watch(habitsLast7Provider);
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -287,6 +289,14 @@ class _WorkoutsTab extends ConsumerWidget {
           loading: () => const LinearProgressIndicator(),
           error: (e, st) => Text('Error: $e'),
           data: (list) => _WeeklyVolumeBarChart(list: list),
+        ),
+        const SizedBox(height: 16),
+        Text('Habits Completion (last 7 days)', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        habits7.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (e, st) => Text('Error: $e'),
+          data: (list) => _HabitsCompletionBarChart(list: list),
         ),
         const SizedBox(height: 16),
         Text('Top Exercises by Volume', style: Theme.of(context).textTheme.titleMedium),
@@ -471,6 +481,65 @@ class _TopExercisesBarChart extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _HabitsCompletionBarChart extends StatelessWidget {
+  const _HabitsCompletionBarChart({required this.list});
+  final List<DailyHabitCompletion> list;
+
+  @override
+  Widget build(BuildContext context) {
+    if (list.isEmpty) return const SizedBox.shrink();
+    final bars = <BarChartGroupData>[];
+    double maxY = 100;
+    for (int i = 0; i < list.length; i++) {
+      final v = list[i].percent.clamp(0.0, 100.0).toDouble();
+      bars.add(BarChartGroupData(x: i, barRods: [
+        BarChartRodData(toY: v, color: Theme.of(context).colorScheme.tertiary, width: 16, borderRadius: BorderRadius.circular(4)),
+      ]));
+    }
+    final labels = [for (final d in list) '${d.date.month}/${d.date.day}'];
+    return SizedBox(
+      height: 200,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: BarChart(BarChartData(
+            gridData: const FlGridData(show: true),
+            borderData: FlBorderData(show: true),
+            barGroups: bars,
+            titlesData: FlTitlesData(
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, interval: 25, getTitlesWidget: _leftTitle)),
+              bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
+                return Text(labels[idx], style: const TextStyle(fontSize: 10));
+              })),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  final d = list[group.x.toInt()];
+                  final pct = rod.toY.clamp(0.0, 100.0).toStringAsFixed(0);
+                  return BarTooltipItem('${d.date.month}/${d.date.day}\n$pct%', const TextStyle());
+                },
+              ),
+            ),
+            maxY: maxY,
+            minY: 0,
+          )),
+        ),
+      ),
+    );
+  }
+
+  static Widget _leftTitle(double v, TitleMeta m) {
+    if (v < 0 || v > 100) return const SizedBox.shrink();
+    if (v % 25 != 0) return const SizedBox.shrink();
+    return Text('${v.toInt()}%', style: const TextStyle(fontSize: 10));
   }
 }
 

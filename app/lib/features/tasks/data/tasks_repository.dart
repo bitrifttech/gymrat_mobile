@@ -145,6 +145,29 @@ class TasksRepository {
       return map;
     });
   }
+
+  // Analytics: last N days habit completion (scheduled vs completed)
+  Future<List<DailyHabitCompletion>> readHabitCompletionLastNDays(int days) async {
+    final userId = await _getCurrentUserId();
+    final today = _dateOnly(DateTime.now());
+    final start = today.subtract(Duration(days: days - 1));
+    final result = <DailyHabitCompletion>[];
+    for (int i = 0; i < days; i++) {
+      final d = start.add(Duration(days: i));
+      final dow = d.weekday; // 1..7
+      final scheduled = await (_db.select(_db.taskSchedule)
+            ..where((ts) => ts.userId.equals(userId) & ts.dayOfWeek.equals(dow)))
+          .get();
+      final completed = await (_db.select(_db.taskLog)
+            ..where((tl) => tl.userId.equals(userId) & tl.date.equals(d) & tl.completedAt.isNotNull()))
+          .get();
+      final scheduledCount = scheduled.map((e) => e.taskId).toSet().length;
+      final completedCount = completed.map((e) => e.taskId).toSet().length;
+      final percent = scheduledCount == 0 ? 0.0 : (completedCount / scheduledCount) * 100.0;
+      result.add(DailyHabitCompletion(date: d, scheduled: scheduledCount, completed: completedCount, percent: percent));
+    }
+    return result;
+  }
 }
 
 final tasksRepositoryProvider = Provider<TasksRepository>((ref) {
@@ -170,6 +193,18 @@ final taskAssignmentsProvider = StreamProvider<Map<int, Set<int>>>((ref) {
 
 final completedTodayProvider = StreamProvider<Set<int>>((ref) {
   return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForDate(DateTime.now());
+});
+
+class DailyHabitCompletion {
+  DailyHabitCompletion({required this.date, required this.scheduled, required this.completed, required this.percent});
+  final DateTime date;
+  final int scheduled;
+  final int completed;
+  final double percent; // 0..100
+}
+
+final habitsLast7Provider = FutureProvider<List<DailyHabitCompletion>>((ref) async {
+  return ref.read(tasksRepositoryProvider).readHabitCompletionLastNDays(7);
 });
 
 
