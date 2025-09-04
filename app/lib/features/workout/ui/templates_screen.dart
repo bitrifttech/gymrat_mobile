@@ -340,19 +340,37 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     runSpacing: 8,
                     children: [
                       for (int i = 0; i < 7; i++) ...[
-                        ChoiceChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(days[i]),
-                              const SizedBox(width: 4),
-                              if (dayToTemplateId.containsKey(i + 1))
-                                const CircleAvatar(radius: 3, backgroundColor: Colors.green),
-                            ],
-                          ),
-                          selected: _selectedDay == i + 1,
-                          onSelected: (_) => setState(() => _selectedDay = i + 1),
-                        ),
+                        Builder(builder: (ctx) {
+                          final dayIndex = i + 1;
+                          final tasksForDay = ref.watch(tasksForDayProvider(dayIndex)).maybeWhen(
+                                data: (list) => list.length,
+                                orElse: () => 0,
+                              );
+                          return ChoiceChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(days[i]),
+                                const SizedBox(width: 4),
+                                if (dayToTemplateId.containsKey(dayIndex))
+                                  const CircleAvatar(radius: 3, backgroundColor: Colors.green),
+                                if (tasksForDay > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text('$tasksForDay', style: const TextStyle(fontSize: 10, color: Colors.white)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            selected: _selectedDay == dayIndex,
+                            onSelected: (_) => setState(() => _selectedDay = dayIndex),
+                          );
+                        }),
                       ],
                     ],
                   ),
@@ -382,6 +400,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                             ? null
                             : () async {
                                 await ref.read(workoutRepositoryProvider).clearScheduleForDay(_selectedDay);
+                                await ref.read(tasksRepositoryProvider).clearDay(_selectedDay);
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cleared')));
                               },
@@ -494,14 +513,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                   await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: d, templateId: tplId);
                                 }
                               }
-                              // Copy tasks (local only)
-                              final tasks = List<String>.from(_tasksByDay[_selectedDay] ?? []);
-                              setState(() {
-                                for (final d in selected) {
-                                  if (d == _selectedDay) continue;
-                                  _tasksByDay[d] = List<String>.from(tasks);
+                              // Copy tasks (persisted)
+                              final tasksRepo = ref.read(tasksRepositoryProvider);
+                              final srcTasks = await tasksRepo.readTasksForDay(_selectedDay);
+                              for (final d in selected) {
+                                if (d == _selectedDay) continue;
+                                for (final t in srcTasks) {
+                                  await tasksRepo.assignTaskToDay(taskId: t.id, dayOfWeek: d);
                                 }
-                              });
+                              }
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
                             }
