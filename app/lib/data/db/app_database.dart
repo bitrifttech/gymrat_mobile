@@ -80,6 +80,21 @@ class MealItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class MealTemplates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class MealTemplateItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get templateId => integer().customConstraint('NOT NULL REFERENCES meal_templates(id) ON DELETE CASCADE')();
+  IntColumn get foodId => integer().customConstraint('NOT NULL REFERENCES foods(id) ON DELETE CASCADE')();
+  RealColumn get quantity => real().withDefault(const Constant(1.0))();
+  TextColumn get unit => text().nullable()();
+}
+
 class Exercises extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get userId => integer().customConstraint('NOT NULL REFERENCES users(id) ON DELETE CASCADE')();
@@ -169,6 +184,8 @@ class TaskLog extends Table {
     Foods,
     Meals,
     MealItems,
+    MealTemplates,
+    MealTemplateItems,
     Exercises,
     Workouts,
     WorkoutExercises,
@@ -185,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -241,6 +258,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(this.taskLog);
             await m.createIndex(Index('idx_task_schedule_day', 'CREATE INDEX IF NOT EXISTS idx_task_schedule_day ON task_schedule(day_of_week)'));
             await m.createIndex(Index('idx_task_log_date', 'CREATE INDEX IF NOT EXISTS idx_task_log_date ON task_log(date)'));
+          }
+          if (from < 10) {
+            await m.createTable(this.mealTemplates);
+            await m.createTable(this.mealTemplateItems);
+            await m.createIndex(Index('idx_meal_template_items_template', 'CREATE INDEX IF NOT EXISTS idx_meal_template_items_template ON meal_template_items(template_id)'));
           }
         },
       );

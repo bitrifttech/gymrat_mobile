@@ -117,6 +117,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
   @override
   Widget build(BuildContext context) {
     final recent = ref.watch(recentFoodsProvider);
+    final mealTemplates = ref.watch(mealTemplatesProvider);
     final perMeal = ref.watch(todayPerMealTotalsProvider);
 
     return Scaffold(
@@ -138,6 +139,61 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final name = await showDialog<String>(
+                    context: context,
+                    builder: (ctx) {
+                      final c = TextEditingController();
+                      return AlertDialog(
+                        title: const Text('Save Current Meal as Template'),
+                        content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Template name')),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Save')),
+                        ],
+                      );
+                    },
+                  );
+                  if (name == null || name.isEmpty) return;
+                  // Ensure there is a meal today of this type; create empty if needed so template is saved from it (no items saved if none)
+                  final repo = ref.read(foodRepositoryProvider);
+                  // Create a template from existing meal if exists, else create empty template
+                  final dayMeals = await repo.watchMealsForDay(DateTime.now()).first;
+                  final matches = dayMeals.where((m) => m.$1.mealType == _mealType).toList();
+                  if (matches.isNotEmpty) {
+                    final mealId = matches.first.$1.id;
+                    await repo.createMealTemplateFromExistingMeal(name: name, mealId: mealId);
+                  } else {
+                    await repo.createMealTemplate(name);
+                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Template saved')));
+                },
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Save as Template'),
+              ),
+              const SizedBox(width: 12),
+              PopupMenuButton<(int, String)>(
+                tooltip: 'Apply Template',
+                itemBuilder: (ctx) {
+                  return mealTemplates.maybeWhen(
+                    data: (list) => [for (final t in list) PopupMenuItem(value: (t.id, t.name), child: Text(t.name))],
+                    orElse: () => [const PopupMenuItem(enabled: false, child: Text('No templates'))],
+                  );
+                },
+                onSelected: (tpl) async {
+                  await ref.read(foodRepositoryProvider).applyMealTemplateToMeal(templateId: tpl.$1, mealType: _mealType);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Applied template: ${tpl.$2}')));
+                },
+                child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.playlist_add), label: const Text('Apply Template')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               DropdownButton<String>(

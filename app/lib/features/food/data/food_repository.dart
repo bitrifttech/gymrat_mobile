@@ -527,6 +527,98 @@ class FoodRepository {
       return [];
     }
   }
+
+  // ===== Meal Templates =====
+  Future<int> createMealTemplate(String name) async {
+    final userId = await _getCurrentUserId();
+    return _db.into(_db.mealTemplates).insert(MealTemplatesCompanion.insert(userId: userId, name: name));
+    }
+
+  Future<void> deleteMealTemplate(int templateId) async {
+    await (_db.delete(_db.mealTemplates)..where((t) => t.id.equals(templateId))).go();
+  }
+
+  Future<void> renameMealTemplate({required int templateId, required String name}) async {
+    await (_db.update(_db.mealTemplates)..where((t) => t.id.equals(templateId))).write(
+      MealTemplatesCompanion(name: Value(name)),
+    );
+  }
+
+  Future<int> addItemToMealTemplate({required int templateId, required int foodId, double quantity = 1.0, String? unit}) async {
+    return _db.into(_db.mealTemplateItems).insert(MealTemplateItemsCompanion.insert(
+      templateId: templateId,
+      foodId: foodId,
+      quantity: Value(quantity),
+      unit: Value(unit),
+    ));
+  }
+
+  Future<void> updateMealTemplateItem({required int itemId, double? quantity, String? unit}) async {
+    await (_db.update(_db.mealTemplateItems)..where((i) => i.id.equals(itemId))).write(MealTemplateItemsCompanion(
+      quantity: quantity == null ? const Value.absent() : Value(quantity),
+      unit: unit == null ? const Value.absent() : Value(unit),
+    ));
+  }
+
+  Future<void> deleteMealTemplateItem(int itemId) async {
+    await (_db.delete(_db.mealTemplateItems)..where((i) => i.id.equals(itemId))).go();
+  }
+
+  Stream<List<MealTemplate>> watchMealTemplates() {
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      return (_db.select(_db.mealTemplates)
+            ..where((t) => t.userId.equals(userId))
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .watch();
+    });
+  }
+
+  Stream<List<(MealTemplateItem, Food)>> watchMealTemplateItems(int templateId) {
+    final q = (_db.select(_db.mealTemplateItems)
+          ..where((i) => i.templateId.equals(templateId)));
+    return q.watch().asyncMap((items) async {
+      final pairs = <(MealTemplateItem, Food)>[];
+      for (final i in items) {
+        final food = await (_db.select(_db.foods)..where((f) => f.id.equals(i.foodId))).getSingle();
+        pairs.add((i, food));
+      }
+      return pairs;
+    });
+  }
+
+  Future<int> applyMealTemplateToMeal({required int templateId, required String mealType}) async {
+    final mealId = await _ensureMealFor(DateTime.now(), mealType);
+    final items = await (_db.select(_db.mealTemplateItems)..where((i) => i.templateId.equals(templateId))).get();
+    for (final i in items) {
+      final food = await (_db.select(_db.foods)..where((f) => f.id.equals(i.foodId))).getSingle();
+      final qty = i.quantity;
+      final calories = (food.calories * qty).round();
+      final p = (food.proteinG * qty).round();
+      final c = (food.carbsG * qty).round();
+      final f = (food.fatsG * qty).round();
+      await _db.into(_db.mealItems).insert(MealItemsCompanion.insert(
+        mealId: mealId,
+        foodId: food.id,
+        quantity: Value(qty),
+        unit: Value(i.unit),
+        calories: Value(calories),
+        proteinG: Value(p),
+        carbsG: Value(c),
+        fatsG: Value(f),
+      ));
+    }
+    return mealId;
+  }
+
+  Future<int> createMealTemplateFromExistingMeal({required String name, required int mealId}) async {
+    final templateId = await createMealTemplate(name);
+    final items = await (_db.select(_db.mealItems)..where((mi) => mi.mealId.equals(mealId))).get();
+    for (final mi in items) {
+      await addItemToMealTemplate(templateId: templateId, foodId: mi.foodId, quantity: mi.quantity, unit: mi.unit);
+    }
+    return templateId;
+  }
 }
 
 final foodRepositoryProvider = Provider<FoodRepository>((ref) {
@@ -568,4 +660,13 @@ final mealsForDateProvider = StreamProvider.family<List<(Meal, List<(MealItem, F
 
 final totalsForDateProvider = StreamProvider.family<MacroTotals, DateTime>((ref, date) {
   return ref.read(foodRepositoryProvider).watchTotalsForDate(date);
+});
+
+// Meal Template providers
+final mealTemplatesProvider = StreamProvider<List<MealTemplate>>((ref) {
+  return ref.read(foodRepositoryProvider).watchMealTemplates();
+});
+
+final mealTemplateItemsProvider = StreamProvider.family<List<(MealTemplateItem, Food)>, int>((ref, templateId) {
+  return ref.read(foodRepositoryProvider).watchMealTemplateItems(templateId);
 });
