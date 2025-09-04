@@ -250,50 +250,197 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   }
 }
 
-class ScheduleScreen extends ConsumerWidget {
+class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+
+class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
+  int _selectedDay = DateTime.now().weekday; // 1..7
+  final Map<int, List<String>> _tasksByDay = {for (int d = 1; d <= 7; d++) d: <String>[]};
+
+  @override
+  Widget build(BuildContext context) {
     final templates = ref.watch(templatesProvider);
     final schedule = ref.watch(scheduleProvider);
-    final days = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Workout Schedule')),
+      appBar: AppBar(title: const Text('Schedule')),
       body: templates.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
         data: (templateList) {
-          if (templateList.isEmpty) return const Center(child: Text('Create a template first'));
           return schedule.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Error: $e')),
             data: (schedList) {
               final dayToTemplateId = {for (final s in schedList) s.dayOfWeek: s.templateId};
-              return ListView.builder(
-                itemCount: days.length,
-                itemBuilder: (ctx, i) {
-                  final dayIndex = i + 1; // 1..7
-                  final current = dayToTemplateId[dayIndex];
-                  return ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: Text(days[i]),
-                    trailing: DropdownButton<int>(
-                      value: current,
-                      hint: const Text('Select template'),
-                      items: [
-                        for (final t in templateList) DropdownMenuItem(value: t.id, child: Text(t.name)),
+              final currentTplId = dayToTemplateId[_selectedDay];
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Day selector
+                  Center(
+                    child: SegmentedButton<int>(
+                      segments: [
+                        for (int i = 0; i < 7; i++)
+                          ButtonSegment<int>(value: i + 1, label: Text(days[i]))
                       ],
-                      onChanged: (v) async {
-                        if (v == null) return;
-                        await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: dayIndex, templateId: v);
-                        if (!ctx.mounted) return;
-                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Saved')));
-                      },
+                      selected: {_selectedDay},
+                      onSelectionChanged: (s) => setState(() => _selectedDay = s.first),
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Workout', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: currentTplId,
+                          hint: const Text('Select workout template'),
+                          items: [
+                            for (final t in templateList) DropdownMenuItem(value: t.id, child: Text(t.name)),
+                          ],
+                          onChanged: (v) async {
+                            if (v == null) return;
+                            await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: _selectedDay, templateId: v);
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: currentTplId == null
+                            ? null
+                            : () async {
+                                await ref.read(workoutRepositoryProvider).clearScheduleForDay(_selectedDay);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cleared')));
+                              },
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Text('Tasks', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < (_tasksByDay[_selectedDay]?.length ?? 0); i++)
+                          ListTile(
+                            leading: const Icon(Icons.checklist),
+                            title: Text(_tasksByDay[_selectedDay]![i]),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => setState(() => _tasksByDay[_selectedDay]!.removeAt(i)),
+                            ),
+                          ),
+                        ListTile(
+                          leading: const Icon(Icons.add),
+                          title: const Text('Add Task'),
+                          onTap: () async {
+                            final title = await showDialog<String>(
+                              context: context,
+                              builder: (ctx) {
+                                final c = TextEditingController();
+                                return AlertDialog(
+                                  title: const Text('Add Task'),
+                                  content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Title')),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                    TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Add')),
+                                  ],
+                                );
+                              },
+                            );
+                            if (title != null && title.isNotEmpty) {
+                              setState(() => _tasksByDay[_selectedDay]!.add(title));
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.content_copy),
+                          label: const Text('Copy this day to...'),
+                          onPressed: () async {
+                            final selected = <int>{};
+                            final result = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) {
+                                return StatefulBuilder(builder: (ctx, setSt) {
+                                  return AlertDialog(
+                                    title: const Text('Copy to days'),
+                                    content: SizedBox(
+                                      width: 300,
+                                      child: Wrap(
+                                        spacing: 8,
+                                        children: [
+                                          for (int d = 1; d <= 7; d++)
+                                            FilterChip(
+                                              label: Text(days[d - 1]),
+                                              selected: selected.contains(d),
+                                              onSelected: (v) => setSt(() => v ? selected.add(d) : selected.remove(d)),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Copy')),
+                                    ],
+                                  );
+                                });
+                              },
+                            );
+                            if (result == true) {
+                              // Copy workout template assignment
+                              final tplId = dayToTemplateId[_selectedDay];
+                              if (tplId != null) {
+                                for (final d in selected) {
+                                  if (d == _selectedDay) continue;
+                                  await ref.read(workoutRepositoryProvider).setSchedule(dayOfWeek: d, templateId: tplId);
+                                }
+                              }
+                              // Copy tasks (local only)
+                              final tasks = List<String>.from(_tasksByDay[_selectedDay] ?? []);
+                              setState(() {
+                                for (final d in selected) {
+                                  if (d == _selectedDay) continue;
+                                  _tasksByDay[d] = List<String>.from(tasks);
+                                }
+                              });
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.clear),
+                        label: const Text('Clear day'),
+                        onPressed: () async {
+                          await ref.read(workoutRepositoryProvider).clearScheduleForDay(_selectedDay);
+                          setState(() => _tasksByDay[_selectedDay] = <String>[]);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Day cleared')));
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               );
             },
           );

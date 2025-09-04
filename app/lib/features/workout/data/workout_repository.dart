@@ -279,6 +279,13 @@ class WorkoutRepository {
     }
   }
 
+  Future<void> clearScheduleForDay(int dayOfWeek) async {
+    final userId = await _getCurrentUserId();
+    await (_db.delete(_db.workoutSchedule)
+          ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(dayOfWeek)))
+        .go();
+  }
+
   Stream<List<WorkoutScheduleData>> watchSchedule() {
     final userIdFuture = _getCurrentUserId();
     return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
