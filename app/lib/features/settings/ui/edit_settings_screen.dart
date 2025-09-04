@@ -73,7 +73,12 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
             carbsG: int.tryParse(_carbs.text),
             fatsG: int.tryParse(_fats.text),
           ));
-      if (mounted) Navigator.of(context).pop();
+      if (!mounted) return;
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
