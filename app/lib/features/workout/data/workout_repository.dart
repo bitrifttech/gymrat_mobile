@@ -244,6 +244,17 @@ class WorkoutRepository {
     await (_db.delete(_db.templateExercises)..where((te) => te.id.equals(templateExerciseId))).go();
   }
 
+  Future<void> reorderTemplateExercises({required int templateId, required List<int> orderedTemplateExerciseIds}) async {
+    await _db.transaction(() async {
+      for (int i = 0; i < orderedTemplateExerciseIds.length; i++) {
+        final teId = orderedTemplateExerciseIds[i];
+        await (_db.update(_db.templateExercises)..where((te) => te.id.equals(teId) & te.templateId.equals(templateId))).write(
+          TemplateExercisesCompanion(orderIndex: Value(i)),
+        );
+      }
+    });
+  }
+
   Stream<List<WorkoutTemplate>> watchTemplates() {
     final userIdFuture = _getCurrentUserId();
     return Stream.fromFuture(userIdFuture).asyncExpand((userId) {

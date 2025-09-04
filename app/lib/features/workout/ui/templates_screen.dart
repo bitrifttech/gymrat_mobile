@@ -45,7 +45,24 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
               if (match.isNotEmpty) name = match.first.name;
             }
             name ??= list.isNotEmpty ? list.first.name : null;
-            return Text(name == null ? 'Edit Template' : 'Edit Template – $name');
+            return Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: name ?? 'Edit Template',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    decoration: const InputDecoration(border: InputBorder.none, isCollapsed: true),
+                    onFieldSubmitted: (val) async {
+                      final v = val.trim();
+                      if (v.isEmpty || _selectedTemplateId == null) return;
+                      await ref.read(workoutRepositoryProvider).renameTemplate(templateId: _selectedTemplateId!, name: v);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Template renamed')));
+                    },
+                  ),
+                ),
+              ],
+            );
           },
         ),
         actions: [
@@ -140,8 +157,20 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                     error: (e, st) => Center(child: Text('Error: $e')),
                     data: (list) {
                       if (list.isEmpty) return const Center(child: Text('No exercises'));
-                      return ListView.builder(
+                      return ReorderableListView.builder(
+                        buildDefaultDragHandles: true,
                         itemCount: list.length,
+                        onReorder: (oldIndex, newIndex) async {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final mutable = List.of(list);
+                          final item = mutable.removeAt(oldIndex);
+                          mutable.insert(newIndex, item);
+                          await ref.read(workoutRepositoryProvider).reorderTemplateExercises(
+                                templateId: _selectedTemplateId!,
+                                orderedTemplateExerciseIds: mutable.map((e) => e.id).toList(),
+                              );
+                          setState(() {});
+                        },
                         itemBuilder: (ctx, i) {
                           final te = list[i];
                           final setsCtrl = TextEditingController(text: te.setsCount.toString());
@@ -149,6 +178,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                           final repsMaxCtrl = TextEditingController(text: te.repsMax?.toString() ?? '');
                           final restCtrl = TextEditingController(text: te.restSeconds.toString());
                           return Card(
+                            key: ValueKey(te.id),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Column(
@@ -171,7 +201,20 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                                         tooltip: 'Remove',
                                         icon: const Icon(Icons.delete_outline),
                                         onPressed: () async {
-                                          await ref.read(workoutRepositoryProvider).deleteTemplateExercise(te.id);
+                                          final ok = await showDialog<bool>(
+                                            context: context,
+                                            builder: (d) => AlertDialog(
+                                              title: const Text('Remove exercise?'),
+                                              content: Text('Remove ${te.exerciseName} from template?'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                                                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Remove')),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok == true) {
+                                            await ref.read(workoutRepositoryProvider).deleteTemplateExercise(te.id);
+                                          }
                                         },
                                       ),
                                     ],
@@ -283,15 +326,18 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   // Day selector
-                  Center(
-                    child: SegmentedButton<int>(
-                      segments: [
-                        for (int i = 0; i < 7; i++)
-                          ButtonSegment<int>(value: i + 1, label: Text(days[i]))
-                      ],
-                      selected: {_selectedDay},
-                      onSelectionChanged: (s) => setState(() => _selectedDay = s.first),
-                    ),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (int i = 0; i < 7; i++)
+                        ChoiceChip(
+                          label: Text(days[i]),
+                          selected: _selectedDay == i + 1,
+                          onSelected: (_) => setState(() => _selectedDay = i + 1),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text('Workout', style: Theme.of(context).textTheme.titleMedium),
