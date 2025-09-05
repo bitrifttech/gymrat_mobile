@@ -97,6 +97,41 @@ class FoodRepository {
     ));
   }
 
+  Stream<List<Food>> watchCustomFoods() {
+    final userIdFuture = _getCurrentUserId();
+    return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
+      return (_db.select(_db.foods)
+            ..where((f) => f.userId.equals(userId) & f.isCustom.equals(true))
+            ..orderBy([(f) => OrderingTerm.asc(f.name)]))
+          .watch();
+    });
+  }
+
+  Future<void> updateCustomFood({
+    required int id,
+    String? name,
+    String? brand,
+    String? servingDesc,
+    int? calories,
+    int? proteinG,
+    int? carbsG,
+    int? fatsG,
+  }) async {
+    await (_db.update(_db.foods)..where((f) => f.id.equals(id))).write(FoodsCompanion(
+      name: name == null ? const Value.absent() : Value(name),
+      brand: brand == null ? const Value.absent() : Value(brand),
+      servingDesc: servingDesc == null ? const Value.absent() : Value(servingDesc),
+      calories: calories == null ? const Value.absent() : Value(calories),
+      proteinG: proteinG == null ? const Value.absent() : Value(proteinG),
+      carbsG: carbsG == null ? const Value.absent() : Value(carbsG),
+      fatsG: fatsG == null ? const Value.absent() : Value(fatsG),
+    ));
+  }
+
+  Future<void> deleteCustomFood(int id) async {
+    await (_db.delete(_db.foods)..where((f) => f.id.equals(id))).go();
+  }
+
   Future<int> _ensureMealFor(DateTime date, String mealType) async {
     final userId = await _getCurrentUserId();
     final day = _dateOnly(date);
@@ -669,4 +704,9 @@ final mealTemplatesProvider = StreamProvider<List<MealTemplate>>((ref) {
 
 final mealTemplateItemsProvider = StreamProvider.family<List<(MealTemplateItem, Food)>, int>((ref, templateId) {
   return ref.read(foodRepositoryProvider).watchMealTemplateItems(templateId);
+});
+
+// Custom foods providers
+final customFoodsProvider = StreamProvider<List<Food>>((ref) {
+  return ref.read(foodRepositoryProvider).watchCustomFoods();
 });
