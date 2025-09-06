@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:archive/archive_io.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 class EditSettingsScreen extends ConsumerStatefulWidget {
   const EditSettingsScreen({super.key});
@@ -128,52 +131,62 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
       final now = DateTime.now().toIso8601String().replaceAll(':', '-');
       final backupName = 'gymrat-backup-$now.zip';
 
-      // Simple zip: store raw files concatenated with headers (minimalist). For production use, consider archive package.
+      // Build a real zip archive
+      final encoder = ZipFileEncoder();
       final tempDir = await getTemporaryDirectory();
-      final outFile = File(p.join(tempDir.path, backupName));
-      final sink = outFile.openWrite();
-      Future<void> add(String label, File f) async {
-        if (await f.exists()) {
-          final bytes = await f.readAsBytes();
-          sink.writeln('FILE:$label:${bytes.length}');
-          sink.add(bytes);
-          sink.writeln();
-        }
-      }
-      await add('gymrat.db', File(dbPath));
-      await add('gymrat.db-wal', File(walPath));
-      await add('gymrat.db-shm', File(shmPath));
-      await sink.flush();
-      await sink.close();
+      final outPath = p.join(tempDir.path, backupName);
+      encoder.create(outPath);
+      if (await File(dbPath).exists()) encoder.addFile(File(dbPath), 'gymrat.db');
+      if (await File(walPath).exists()) encoder.addFile(File(walPath), 'gymrat.db-wal');
+      if (await File(shmPath).exists()) encoder.addFile(File(shmPath), 'gymrat.db-shm');
+      encoder.close();
 
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Backup created'),
-          content: Text('Saved temporary backup file:\n${outFile.path}\n\nUse the system share sheet to move it to Files/iCloud.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-          ],
-        ),
-      );
+      await Share.shareXFiles([XFile(outPath)], text: 'GymRat backup ($now)');
     } finally {
       if (mounted) setState(() => _backupBusy = false);
     }
   }
 
   Future<void> _importBackup() async {
-    // Minimal placeholder: instruct user where to place replacement DB; production should use file_picker
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Restore from file'),
-        content: const Text('Restore flow requires picking a backup file. To fully implement, we will use a file picker to select the .zip created by backup and replace the DB. For now, this is a placeholder.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
-      ),
-    );
+    if (_backupBusy) return;
+    setState(() => _backupBusy = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['zip']);
+      if (result == null || result.files.single.path == null) return;
+      final zipPath = result.files.single.path!;
+
+      // Decode archive
+      final bytes = await File(zipPath).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      // Paths
+      final appSupport = await getApplicationSupportDirectory();
+      final dbPath = p.join(appSupport.path, 'gymrat.db');
+      final walPath = p.join(appSupport.path, 'gymrat.db-wal');
+      final shmPath = p.join(appSupport.path, 'gymrat.db-shm');
+
+      // Write out extracted files
+      for (final f in archive) {
+        final name = f.name;
+        final data = f.content as List<int>;
+        final out = name.endsWith('gymrat.db')
+            ? File(dbPath)
+            : name.endsWith('gymrat.db-wal')
+                ? File(walPath)
+                : name.endsWith('gymrat.db-shm')
+                    ? File(shmPath)
+                    : null;
+        if (out != null) {
+          await out.writeAsBytes(data, flush: true);
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup restored. Please restart the app.')));
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
   }
 
   String _cmToInText(int? cm) {
