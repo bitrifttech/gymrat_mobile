@@ -239,7 +239,14 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                                           content: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity')),
+                                              TextField(controller: qtyCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Quantity'), textInputAction: TextInputAction.done),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  IconButton(onPressed: () { final v = (double.tryParse(qtyCtrl.text) ?? 0) - 1; qtyCtrl.text = (v < 0 ? 0 : v).toStringAsFixed(0); }, icon: const Icon(Icons.remove_circle_outline)),
+                                                  IconButton(onPressed: () { final v = (double.tryParse(qtyCtrl.text) ?? 0) + 1; qtyCtrl.text = v.toStringAsFixed(0); }, icon: const Icon(Icons.add_circle_outline)),
+                                                ],
+                                              ),
                                               DropdownButtonFormField<String>(
                                                 value: unitVal,
                                                 items: const [

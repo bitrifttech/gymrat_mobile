@@ -529,6 +529,10 @@ class FoodRepository {
       carbsG: Value(newCarbs),
       fatsG: Value(newFats),
     ));
+    // Remember last-used unit for this food for convenience
+    await (_db.update(_db.foods)..where((f) => f.id.equals(food.id))).write(FoodsCompanion(
+      servingUnit: unit == null ? const Value.absent() : Value(unit),
+    ));
   }
 
   Future<void> deleteMealItem(int itemId) async {
@@ -885,13 +889,7 @@ final totalsForDateProvider = StreamProvider.family<MacroTotals, DateTime>((ref,
 });
 
 // Meal Template providers
-final mealTemplatesProvider = StreamProvider<List<MealTemplate>>((ref) {
-  return ref.read(foodRepositoryProvider).watchMealTemplates();
-});
-
-final mealTemplateItemsProvider = StreamProvider.family<List<(MealTemplateItem, Food)>, int>((ref, templateId) {
-  return ref.read(foodRepositoryProvider).watchMealTemplateItems(templateId);
-});
+// Meal templates UI removed; providers kept intentionally absent
 
 // Custom foods providers
 final customFoodsProvider = StreamProvider<List<Food>>((ref) {
