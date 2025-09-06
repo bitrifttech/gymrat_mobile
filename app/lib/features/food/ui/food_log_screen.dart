@@ -167,9 +167,22 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                               tooltip: 'Remove',
                               icon: const Icon(Icons.delete_outline),
                               onPressed: () async {
-                                await ref.read(foodRepositoryProvider).deleteMealItem(mi.id);
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed')));
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Remove item?'),
+                                    content: Text('Remove "${f.name}" from ${_prettyMeal(_mealType)}?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+                                    ],
+                                  ),
+                                );
+                                if (ok == true) {
+                                  await ref.read(foodRepositoryProvider).deleteMealItem(mi.id);
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed')));
+                                }
                               },
                             ),
                           ],

@@ -457,7 +457,28 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
                       ]),
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _editFoodDialog(f)),
-                        IconButton(icon: const Icon(Icons.delete), tooltip: 'Delete', onPressed: () => ref.read(foodRepositoryProvider).deleteCustomFood(f.id)),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          tooltip: 'Delete',
+                          onPressed: () async {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete food?'),
+                                content: Text('Remove "${f.name}" from your custom foods?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                                ],
+                              ),
+                            );
+                            if (ok == true) {
+                              await ref.read(foodRepositoryProvider).deleteCustomFood(f.id);
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food deleted')));
+                            }
+                          },
+                        ),
                       ]),
                     ),
                   ),
