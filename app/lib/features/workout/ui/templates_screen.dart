@@ -37,8 +37,8 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: templates.when(
-          loading: () => const Text('Edit Template'),
-          error: (e, st) => const Text('Edit Template'),
+          loading: () => const Text('Edit Workout'),
+          error: (e, st) => const Text('Edit Workout'),
           data: (list) {
             String? name;
             if (_selectedTemplateId != null) {
@@ -50,7 +50,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
-                    initialValue: name ?? 'Edit Template',
+                    initialValue: name ?? 'Edit Workout',
                     style: Theme.of(context).textTheme.titleLarge,
                     decoration: const InputDecoration(border: InputBorder.none, isCollapsed: true),
                     onFieldSubmitted: (val) async {
@@ -69,7 +69,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
         actions: [
           if (_selectedTemplateId != null)
             IconButton(
-              tooltip: 'Rename Template',
+              tooltip: 'Rename Workout',
               icon: const Icon(Icons.edit),
               onPressed: () async {
                 final currentName = await ref.read(workoutRepositoryProvider).watchTemplates().first.then((list) {
@@ -81,7 +81,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                   builder: (ctx) {
                     final c = TextEditingController(text: currentName);
                     return AlertDialog(
-                      title: const Text('Rename Template'),
+                      title: const Text('Rename Workout'),
                       content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Name')),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -99,13 +99,13 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
             ),
           if (_selectedTemplateId != null)
             IconButton(
-              tooltip: 'Delete Template',
+              tooltip: 'Delete Workout',
               icon: const Icon(Icons.delete),
               onPressed: () async {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Delete template?'),
+                    title: const Text('Delete workout?'),
                     content: const Text('This cannot be undone'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -123,7 +123,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
         ],
       ),
       body: _selectedTemplateId == null
-          ? const Center(child: Text('No template selected'))
+          ? const Center(child: Text('No workout selected'))
           : Column(
               children: [
                 Padding(
@@ -133,7 +133,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                       Expanded(
                         child: TextField(
                           controller: _exerciseCtrl,
-                          decoration: const InputDecoration(labelText: 'Add exercise to template'),
+                          decoration: const InputDecoration(labelText: 'Add exercise to workout'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -213,7 +213,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
                                             context: context,
                                             builder: (d) => AlertDialog(
                                               title: const Text('Remove exercise?'),
-                                              content: Text('Remove ${te.exerciseName} from template?'),
+                                              content: Text('Remove ${te.exerciseName} from workout?'),
                                               actions: [
                                                 TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
                                                 TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Remove')),
@@ -381,7 +381,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          value: currentTplId,
+                          initialValue: currentTplId,
                           hint: const Text('Select workout template'),
                           items: [
                             for (final t in templateList) DropdownMenuItem(value: t.id, child: Text(t.name)),

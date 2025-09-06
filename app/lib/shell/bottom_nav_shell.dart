@@ -206,7 +206,7 @@ class _TemplatesTab extends ConsumerWidget {
                   builder: (ctx) {
                     final ctrl = TextEditingController();
                     return AlertDialog(
-                      title: const Text('New Workout Template'),
+                      title: const Text('New Workout'),
                       content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Template name')),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -221,7 +221,7 @@ class _TemplatesTab extends ConsumerWidget {
                 context.pushNamed('workout.templates', extra: {'initialTemplateId': id});
               },
               icon: const Icon(Icons.add),
-              label: const Text('Add Workout Template'),
+              label: const Text('Add Workout'),
             ),
           ),
         ),
@@ -230,7 +230,7 @@ class _TemplatesTab extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Error: $e')),
             data: (list) {
-              if (list.isEmpty) return const Center(child: Text('No templates'));
+              if (list.isEmpty) return const Center(child: Text('No workouts'));
               return ListView.builder(
                 itemCount: list.length,
                 itemBuilder: (ctx, i) {
