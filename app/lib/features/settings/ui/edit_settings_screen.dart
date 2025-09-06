@@ -121,6 +121,18 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
     return (v * 0.45359237);
   }
 
+  String _canonActivity(String? v) {
+    switch ((v ?? 'Active').trim()) {
+      case 'Sedentary':
+      case 'Lightly Active':
+      case 'Active':
+      case 'Very Active':
+        return v!.trim();
+      default:
+        return 'Active';
+    }
+  }
+
   Future<void> _exportBackup() async {
     setState(() => _backupBusy = true);
     try {
@@ -222,7 +234,7 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
               if (!_fieldsHydrated) {
                 _age.text = (pg.ageYears ?? '').toString();
                 _sex = (pg.gender == 'Female') ? 'Female' : 'Male';
-                _activity = pg.activityLevel ?? _activity;
+                _activity = _canonActivity(pg.activityLevel);
                 _calMin.text = (pg.caloriesMin ?? '').toString();
                 _calMax.text = (pg.caloriesMax ?? '').toString();
                 _protein.text = (pg.proteinG ?? '').toString();
@@ -311,7 +323,7 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
                         DropdownMenuItem(value: 'Active', child: Text('Active (3–5 days/week)')),
                         DropdownMenuItem(value: 'Very Active', child: Text('Very Active (6–7 days/week)')),
                       ],
-                      onChanged: (v) => setState(() => _activity = v ?? 'Active'),
+                      onChanged: (v) => setState(() => _activity = _canonActivity(v)),
                     ),
                     const Divider(),
                     TextFormField(

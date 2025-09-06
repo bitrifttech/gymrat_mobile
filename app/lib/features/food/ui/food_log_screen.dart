@@ -24,7 +24,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     final repo = ref.read(foodRepositoryProvider);
     final food = await repo.getFoodById(foodId);
     final qtyController = TextEditingController(text: (food?.servingQty?.toString() ?? '1'));
-    String unitValue = (food?.servingUnit ?? 'serving');
+    String unitValue = _canonUnit(food?.servingUnit);
     final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<(double qty, String? unit)>(
       context: context,
@@ -80,6 +80,45 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     await repo.addExistingFoodToMeal(foodId: foodId, mealType: _mealType, quantity: qty, unit: unit);
     if (!mounted) return;
     messenger.showSnackBar(const SnackBar(content: Text('Food added')));
+  }
+
+  // Canonicalize arbitrary unit strings to supported dropdown values
+  String _canonUnit(String? u) {
+    final v = (u ?? 'serving').trim().toLowerCase();
+    switch (v) {
+      case 'g':
+      case 'gram':
+      case 'grams':
+        return 'g';
+      case 'oz':
+      case 'ounce':
+      case 'ounces':
+        return 'oz';
+      case 'ml':
+      case 'milliliter':
+      case 'milliliters':
+        return 'ml';
+      case 'tsp':
+      case 'teaspoon':
+      case 'teaspoons':
+        return 'tsp';
+      case 'tbsp':
+      case 'tablespoon':
+      case 'tablespoons':
+        return 'tbsp';
+      case 'fl oz':
+      case 'floz':
+      case 'fluid ounce':
+      case 'fluid ounces':
+        return 'fl oz';
+      case 'cup':
+      case 'cups':
+        return 'cup';
+      case 'serving':
+      case 'servings':
+      default:
+        return 'serving';
+    }
   }
 
   @override
@@ -194,7 +233,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                                       context: context,
                                       builder: (ctx) {
                                         final qtyCtrl = TextEditingController(text: mi.quantity.toStringAsFixed(2));
-                                        String unitVal = mi.unit ?? (f.servingUnit ?? 'serving');
+                                        String unitVal = _canonUnit(mi.unit ?? f.servingUnit);
                                         return AlertDialog(
                                           title: const Text('Edit Item'),
                                           content: Column(
