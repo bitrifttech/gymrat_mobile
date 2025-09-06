@@ -329,48 +329,51 @@ class _FoodsTab extends ConsumerStatefulWidget {
 }
 
 class _FoodsTabState extends ConsumerState<_FoodsTab> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _brandCtrl = TextEditingController();
-  final _servingCtrl = TextEditingController();
-  final _calCtrl = TextEditingController();
-  final _proteinCtrl = TextEditingController();
-  final _carbCtrl = TextEditingController();
-  final _fatCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _brandCtrl.dispose();
-    _servingCtrl.dispose();
-    _calCtrl.dispose();
-    _proteinCtrl.dispose();
-    _carbCtrl.dispose();
-    _fatCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    await ref.read(foodRepositoryProvider).addCustomFood(
-      name: _nameCtrl.text.trim(),
-      brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
-      servingDesc: _servingCtrl.text.trim().isEmpty ? null : _servingCtrl.text.trim(),
-      calories: int.parse(_calCtrl.text),
-      proteinG: int.parse(_proteinCtrl.text),
-      carbsG: int.parse(_carbCtrl.text),
-      fatsG: int.parse(_fatCtrl.text),
+  Future<void> _addFoodDialog() async {
+    final name = TextEditingController();
+    final brand = TextEditingController();
+    final serving = TextEditingController();
+    final cal = TextEditingController();
+    final p = TextEditingController();
+    final c = TextEditingController();
+    final f = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Food'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: brand, decoration: const InputDecoration(labelText: 'Brand')),
+              TextField(controller: serving, decoration: const InputDecoration(labelText: 'Serving desc')),
+              TextField(controller: cal, decoration: const InputDecoration(labelText: 'Calories'), keyboardType: TextInputType.number),
+              TextField(controller: p, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number),
+              TextField(controller: c, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number),
+              TextField(controller: f, decoration: const InputDecoration(labelText: 'Fats (g)'), keyboardType: TextInputType.number),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
     );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
-    _formKey.currentState!.reset();
-    _nameCtrl.clear();
-    _brandCtrl.clear();
-    _servingCtrl.clear();
-    _calCtrl.clear();
-    _proteinCtrl.clear();
-    _carbCtrl.clear();
-    _fatCtrl.clear();
+    if (ok == true) {
+      await ref.read(foodRepositoryProvider).addCustomFood(
+        name: name.text.trim(),
+        brand: brand.text.trim().isEmpty ? null : brand.text.trim(),
+        servingDesc: serving.text.trim().isEmpty ? null : serving.text.trim(),
+        calories: int.tryParse(cal.text) ?? 0,
+        proteinG: int.tryParse(p.text) ?? 0,
+        carbsG: int.tryParse(c.text) ?? 0,
+        fatsG: int.tryParse(f.text) ?? 0,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
+    }
   }
 
   Future<void> _editFoodDialog(Food food) async {
@@ -425,32 +428,15 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Add Custom Food', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Name'), validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
-              TextFormField(controller: _brandCtrl, decoration: const InputDecoration(labelText: 'Brand (optional)')),
-              TextFormField(controller: _servingCtrl, decoration: const InputDecoration(labelText: 'Serving (e.g., 1 cup)')),
-              Row(children: [
-                Expanded(child: TextFormField(controller: _calCtrl, decoration: const InputDecoration(labelText: 'Calories'), keyboardType: TextInputType.number, validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _proteinCtrl, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number, validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null)),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: TextFormField(controller: _carbCtrl, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number, validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _fatCtrl, decoration: const InputDecoration(labelText: 'Fats (g)'), keyboardType: TextInputType.number, validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null)),
-              ]),
-              const SizedBox(height: 12),
-              Align(alignment: Alignment.centerRight, child: ElevatedButton.icon(onPressed: _submit, icon: const Icon(Icons.add), label: const Text('Add'))),
-            ],
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _addFoodDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Food'),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text('My Custom Foods', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         foods.when(
