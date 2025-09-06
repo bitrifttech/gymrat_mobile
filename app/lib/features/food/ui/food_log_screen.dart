@@ -11,63 +11,14 @@ class FoodLogScreen extends ConsumerStatefulWidget {
 }
 
 class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _brandCtrl = TextEditingController();
-  final _servingCtrl = TextEditingController();
-  final _calCtrl = TextEditingController();
-  final _proteinCtrl = TextEditingController();
-  final _carbCtrl = TextEditingController();
-  final _fatCtrl = TextEditingController();
-  final _qtyCtrl = TextEditingController(text: '1');
-  final _unitCtrl = TextEditingController();
-
   String _mealType = 'breakfast';
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _brandCtrl.dispose();
-    _servingCtrl.dispose();
-    _calCtrl.dispose();
-    _proteinCtrl.dispose();
-    _carbCtrl.dispose();
-    _fatCtrl.dispose();
-    _qtyCtrl.dispose();
-    _unitCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final repo = ref.read(foodRepositoryProvider);
-    final messenger = ScaffoldMessenger.of(context);
-    final qty = double.tryParse(_qtyCtrl.text) ?? 1.0;
-    await repo.addCustomFoodToMeal(
-      name: _nameCtrl.text.trim(),
-      brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
-      servingDesc: _servingCtrl.text.trim().isEmpty ? null : _servingCtrl.text.trim(),
-      calories: int.parse(_calCtrl.text),
-      proteinG: int.parse(_proteinCtrl.text),
-      carbsG: int.parse(_carbCtrl.text),
-      fatsG: int.parse(_fatCtrl.text),
-      mealType: _mealType,
-      quantity: qty,
-      unit: _unitCtrl.text.trim().isEmpty ? null : _unitCtrl.text.trim(),
-    );
-    if (!mounted) return;
-    messenger.showSnackBar(const SnackBar(content: Text('Food added')));
-    _formKey.currentState!.reset();
-    _nameCtrl.clear();
-    _brandCtrl.clear();
-    _servingCtrl.clear();
-    _calCtrl.clear();
-    _proteinCtrl.clear();
-    _carbCtrl.clear();
-    _fatCtrl.clear();
-    _qtyCtrl.text = '1';
-    _unitCtrl.clear();
-  }
+  // Quantity/unit prompt, then add an existing food to the selected meal
 
   Future<void> _promptAndAddRecent({required int foodId}) async {
     final qtyController = TextEditingController(text: '1');
@@ -116,207 +67,87 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final recent = ref.watch(recentFoodsProvider);
-    final mealTemplates = ref.watch(mealTemplatesProvider);
-    final perMeal = ref.watch(todayPerMealTotalsProvider);
+    final meals = ref.watch(todaysMealsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log Food'),
-        actions: [
-          IconButton(
-            tooltip: 'Scan barcode',
-            onPressed: () => context.pushNamed('food.scan'),
-            icon: const Icon(Icons.qr_code_scanner),
-          ),
-          IconButton(
-            tooltip: 'Search foods',
-            onPressed: () => context.pushNamed('food.search'),
-            icon: const Icon(Icons.search),
-          ),
-        ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final name = await showDialog<String>(
-                    context: context,
-                    builder: (ctx) {
-                      final c = TextEditingController();
-                      return AlertDialog(
-                        title: const Text('Save Current Meal as Template'),
-                        content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Template name')),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Save')),
-                        ],
-                      );
-                    },
-                  );
-                  if (name == null || name.isEmpty) return;
-                  // Ensure there is a meal today of this type; create empty if needed so template is saved from it (no items saved if none)
-                  final repo = ref.read(foodRepositoryProvider);
-                  // Create a template from existing meal if exists, else create empty template
-                  final dayMeals = await repo.watchMealsForDay(DateTime.now()).first;
-                  final matches = dayMeals.where((m) => m.$1.mealType == _mealType).toList();
-                  if (matches.isNotEmpty) {
-                    final mealId = matches.first.$1.id;
-                    await repo.createMealTemplateFromExistingMeal(name: name, mealId: mealId);
-                  } else {
-                    await repo.createMealTemplate(name);
-                  }
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Template saved')));
-                },
-                icon: const Icon(Icons.save_alt),
-                label: const Text('Save as Template'),
-              ),
-              const SizedBox(width: 12),
-              PopupMenuButton<(int, String)>(
-                tooltip: 'Apply Template',
-                itemBuilder: (ctx) {
-                  return mealTemplates.maybeWhen(
-                    data: (list) => [for (final t in list) PopupMenuItem(value: (t.id, t.name), child: Text(t.name))],
-                    orElse: () => [const PopupMenuItem(enabled: false, child: Text('No templates'))],
-                  );
-                },
-                onSelected: (tpl) async {
-                  await ref.read(foodRepositoryProvider).applyMealTemplateToMeal(templateId: tpl.$1, mealType: _mealType);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Applied template: ${tpl.$2}')));
-                },
-                child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.playlist_add), label: const Text('Apply Template')),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              DropdownButton<String>(
-                value: _mealType,
-                items: const [
-                  DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                ],
-                onChanged: (v) => setState(() => _mealType = v ?? 'breakfast'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('Add Custom Food', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Form(
-            key: _formKey,
-            child: Column(
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               children: [
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _mealType = 'breakfast'),
+                    child: const Text('Breakfast'),
+                  ),
                 ),
-                TextFormField(
-                  controller: _brandCtrl,
-                  decoration: const InputDecoration(labelText: 'Brand (optional)'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _mealType = 'lunch'),
+                    child: const Text('Lunch'),
+                  ),
                 ),
-                TextFormField(
-                  controller: _servingCtrl,
-                  decoration: const InputDecoration(labelText: 'Serving (e.g., 1 cup)'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _mealType = 'dinner'),
+                    child: const Text('Dinner'),
+                  ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _calCtrl,
-                        decoration: const InputDecoration(labelText: 'Calories'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _proteinCtrl,
-                        decoration: const InputDecoration(labelText: 'Protein (g)'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _carbCtrl,
-                        decoration: const InputDecoration(labelText: 'Carbs (g)'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _fatCtrl,
-                        decoration: const InputDecoration(labelText: 'Fats (g)'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => (v == null || int.tryParse(v) == null) ? 'Number' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _qtyCtrl,
-                        decoration: const InputDecoration(labelText: 'Quantity'),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _unitCtrl,
-                        decoration: const InputDecoration(labelText: 'Unit (optional)'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add to Meal'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _mealType = 'snack'),
+                    child: const Text('Snack'),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Text('Recent', style: Theme.of(context).textTheme.titleMedium),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _showCustomFoodsPicker,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Food'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _openSearchOrScan,
+                    icon: const Icon(Icons.search),
+                    label: const Text('Search For Food'),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
-          recent.when(
-            loading: () => const Center(child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            )),
-            error: (e, st) => Text('Error: $e'),
-            data: (foods) {
-              if (foods.isEmpty) return const Text('No recent foods');
-              return Column(
-                children: [
-                  for (final f in foods)
-                    Card(
+          Expanded(
+            child: meals.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(child: Text('Error: $e')),
+              data: (dayMeals) {
+                final match = dayMeals.where((m) => m.$1.mealType == _mealType).toList();
+                if (match.isEmpty || match.first.$2.isEmpty) {
+                  return Center(child: Text('No foods in ${_prettyMeal(_mealType)} yet'));
+                }
+                final items = match.first.$2;
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: items.length,
+                  itemBuilder: (ctx, i) {
+                    final (mi, f) = items[i];
+                    return Card(
                       child: ListTile(
                         title: Text(f.name),
                         subtitle: Column(
@@ -324,46 +155,113 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                           children: [
                             if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
                               Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
-                            Text('P ${f.proteinG}g • C ${f.carbsG}g • F ${f.fatsG}g'),
+                            Text('Qty ${mi.quantity.toStringAsFixed(2)}${mi.unit == null ? '' : ' ${mi.unit}'} • P ${mi.proteinG}g • C ${mi.carbsG}g • F ${mi.fatsG}g'),
                           ],
                         ),
-                        trailing: Text('${f.calories} kcal'),
-                        onTap: () => _promptAndAddRecent(foodId: f.id),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${mi.calories} kcal'),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: 'Remove',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                await ref.read(foodRepositoryProvider).deleteMealItem(mi.id);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed')));
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          Text('Per-meal Subtotals', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          perMeal.when(
-            loading: () => const Center(child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            )),
-            error: (e, st) => Text('Error: $e'),
-            data: (list) {
-              if (list.isEmpty) return const Text('No items logged today');
-              return Column(
-                children: [
-                  for (final m in list)
-                    ListTile(
-                      leading: const Icon(Icons.restaurant_menu),
-                      title: Text(_prettyMeal(m.mealType)),
-                      subtitle: Text('P ${m.proteinG}g • C ${m.carbsG}g • F ${m.fatsG}g'),
-                      trailing: Text('${m.calories} kcal'),
-                    ),
-                ],
-              );
-            },
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _showCustomFoodsPicker() async {
+    final foodId = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(ctx).size.height * 0.6,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final customFoods = ref.watch(customFoodsProvider);
+                return customFoods.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Center(child: Text('Error: $e')),
+                  data: (foods) {
+                    if (foods.isEmpty) {
+                      return const Center(child: Text('No custom foods yet'));
+                    }
+                    return ListView.builder(
+                      itemCount: foods.length,
+                      itemBuilder: (c, i) {
+                        final f = foods[i];
+                        return ListTile(
+                          title: Text(f.name),
+                          subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                          trailing: Text('${f.calories} kcal'),
+                          onTap: () => Navigator.of(ctx).pop(f.id),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+    if (foodId != null) {
+      await _promptAndAddRecent(foodId: foodId);
+    }
+  }
+
+  Future<void> _openSearchOrScan() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.search),
+                title: const Text('Search Foods'),
+                onTap: () => Navigator.of(ctx).pop('search'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Scan Barcode'),
+                onTap: () => Navigator.of(ctx).pop('scan'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (action == 'search') {
+      if (!mounted) return;
+      context.pushNamed('food.search');
+    } else if (action == 'scan') {
+      if (!mounted) return;
+      context.pushNamed('food.scan');
+    }
+  }
   String _prettyMeal(String t) {
     switch (t) {
       case 'breakfast':
