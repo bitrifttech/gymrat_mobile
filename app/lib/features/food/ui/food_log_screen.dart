@@ -155,6 +155,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                           children: [
                             if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
                               Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                            if (f.servingQty != null && (f.servingUnit ?? '').isNotEmpty)
+                              Text('Serving: ${f.servingQty} ${f.servingUnit}'),
                             Text('Qty ${mi.quantity.toStringAsFixed(2)}${mi.unit == null ? '' : ' ${mi.unit}'} • P ${mi.proteinG}g • C ${mi.carbsG}g • F ${mi.fatsG}g'),
                           ],
                         ),
