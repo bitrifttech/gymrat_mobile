@@ -4,7 +4,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:app/features/food/data/food_repository.dart';
 
 class ScanFoodScreen extends ConsumerStatefulWidget {
-  const ScanFoodScreen({super.key});
+  const ScanFoodScreen({super.key, this.initialMealType});
+  final String? initialMealType;
   @override
   ConsumerState<ScanFoodScreen> createState() => _ScanFoodScreenState();
 }
@@ -12,6 +13,14 @@ class ScanFoodScreen extends ConsumerStatefulWidget {
 class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
   bool _handled = false;
   String _mealType = 'breakfast';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialMealType != null && widget.initialMealType!.isNotEmpty) {
+      _mealType = widget.initialMealType!;
+    }
+  }
 
   Future<void> _promptAdd(int foodId) async {
     final qtyController = TextEditingController(text: '1');

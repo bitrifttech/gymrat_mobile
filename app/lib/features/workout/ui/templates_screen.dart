@@ -382,7 +382,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: currentTplId,
-                          hint: const Text('Select workout template'),
+                          hint: const Text('Select workout'),
                           items: [
                             for (final t in templateList) DropdownMenuItem(value: t.id, child: Text(t.name)),
                           ],

@@ -269,10 +269,10 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     );
     if (action == 'search') {
       if (!mounted) return;
-      context.pushNamed('food.search');
+      context.push('/food/search?meal='+_mealType);
     } else if (action == 'scan') {
       if (!mounted) return;
-      context.pushNamed('food.scan');
+      context.push('/food/scan?meal='+_mealType);
     }
   }
   String _prettyMeal(String t) {

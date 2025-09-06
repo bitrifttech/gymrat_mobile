@@ -119,14 +119,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/food/scan',
         name: 'food.scan',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: ScanFoodScreen());
+          final meal = state.uri.queryParameters['meal'];
+          return NoTransitionPage(child: ScanFoodScreen(initialMealType: meal));
         },
       ),
       GoRoute(
         path: '/food/search',
         name: 'food.search',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: FoodSearchScreen());
+          final meal = state.uri.queryParameters['meal'];
+          return NoTransitionPage(child: FoodSearchScreen(initialMealType: meal));
         },
       ),
       GoRoute(

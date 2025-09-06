@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
-  const FoodSearchScreen({super.key});
+  const FoodSearchScreen({super.key, this.initialMealType});
+  final String? initialMealType;
 
   @override
   ConsumerState<FoodSearchScreen> createState() => _FoodSearchScreenState();
@@ -12,6 +13,14 @@ class FoodSearchScreen extends ConsumerStatefulWidget {
 class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
   final _queryCtrl = TextEditingController();
   String _mealType = 'breakfast';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialMealType != null && widget.initialMealType!.isNotEmpty) {
+      _mealType = widget.initialMealType!;
+    }
+  }
 
   @override
   void dispose() {
