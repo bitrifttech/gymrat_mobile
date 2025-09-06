@@ -134,16 +134,17 @@ This plan is incremental, dependency-aware, and structured so each step ships a 
 - AC:
   - Files generated to Documents; share sheet works
 
-## Milestone 11: Authentication + Sync (Backend)
+## Milestone 11: Backup/Restore + Authentication (Phase 1)
 - Scope:
-  - Email/password auth
-  - Sync queue: up/down sync of entities (conflict policy: last-write-wins initially)
-  - Secure token storage (flutter_secure_storage)
+  - Local backup/export/import to file (zip of SQLite DB) via share sheet (iOS iCloud Drive/Files, Android Drive, etc.)
+  - Restore from selected backup file (validates and replaces DB), app reloads providers
+  - Prep for auth/sync (defer full backend): retain SQLite as cache
 - Dependencies: 0–10
 - Deliverables:
-  - Sign in/up screens; background sync
+  - Settings screen buttons: “Back up to file” and “Restore from file”
+  - Zip includes DB and WAL/SHM if present; restore replaces safely
 - AC:
-  - Login persists token; data syncs across devices after login
+  - User can export backup to Files and restore it later, surviving uninstall/reinstall scenario when the file is kept externally
 
 ## Milestone 12: Polishing + Accessibility + Perf
 - Scope:

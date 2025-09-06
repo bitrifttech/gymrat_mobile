@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/settings/data/settings_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class EditSettingsScreen extends ConsumerStatefulWidget {
   const EditSettingsScreen({super.key});
@@ -26,6 +29,7 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
   String _units = 'metric';
   bool _unitsHydrated = false;
   bool _fieldsHydrated = false;
+  bool _backupBusy = false;
 
   @override
   void initState() {
@@ -112,6 +116,64 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
     final v = double.tryParse(input);
     if (v == null) return null;
     return (v * 0.45359237);
+  }
+
+  Future<void> _exportBackup() async {
+    setState(() => _backupBusy = true);
+    try {
+      final appSupport = await getApplicationSupportDirectory();
+      final dbPath = p.join(appSupport.path, 'gymrat.db');
+      final walPath = p.join(appSupport.path, 'gymrat.db-wal');
+      final shmPath = p.join(appSupport.path, 'gymrat.db-shm');
+      final now = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final backupName = 'gymrat-backup-$now.zip';
+
+      // Simple zip: store raw files concatenated with headers (minimalist). For production use, consider archive package.
+      final tempDir = await getTemporaryDirectory();
+      final outFile = File(p.join(tempDir.path, backupName));
+      final sink = outFile.openWrite();
+      Future<void> add(String label, File f) async {
+        if (await f.exists()) {
+          final bytes = await f.readAsBytes();
+          sink.writeln('FILE:$label:${bytes.length}');
+          sink.add(bytes);
+          sink.writeln();
+        }
+      }
+      await add('gymrat.db', File(dbPath));
+      await add('gymrat.db-wal', File(walPath));
+      await add('gymrat.db-shm', File(shmPath));
+      await sink.flush();
+      await sink.close();
+
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Backup created'),
+          content: Text('Saved temporary backup file:\n${outFile.path}\n\nUse the system share sheet to move it to Files/iCloud.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
+
+  Future<void> _importBackup() async {
+    // Minimal placeholder: instruct user where to place replacement DB; production should use file_picker
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore from file'),
+        content: const Text('Restore flow requires picking a backup file. To fully implement, we will use a file picker to select the .zip created by backup and replace the DB. For now, this is a placeholder.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
   }
 
   String _cmToInText(int? cm) {
@@ -269,6 +331,26 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
                       onPressed: _busy ? null : _resetOnboarding,
                       child: const Text('Reset and Restart Onboarding'),
                     ),
+                    const Divider(height: 32),
+                    Text('Backup & Restore', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _backupBusy ? null : _exportBackup,
+                          icon: const Icon(Icons.archive),
+                          label: Text(_backupBusy ? 'Preparing…' : 'Back up to file'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _backupBusy ? null : _importBackup,
+                          icon: const Icon(Icons.unarchive),
+                          label: const Text('Restore from file'),
+                        ),
+                      ),
+                    ]),
                   ],
                 ),
               );
