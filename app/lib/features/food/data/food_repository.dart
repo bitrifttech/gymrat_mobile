@@ -173,10 +173,22 @@ class FoodRepository {
   }) async {
     final food = await (_db.select(_db.foods)..where((f) => f.id.equals(foodId))).getSingle();
 
-    int calories = (food.calories * quantity).round();
-    int proteinG = (food.proteinG * quantity).round();
-    int carbsG = (food.carbsG * quantity).round();
-    int fatsG = (food.fatsG * quantity).round();
+    double factor = quantity;
+    final foodQty = food.servingQty;
+    final foodUnit = food.servingUnit;
+    if (foodQty != null && foodUnit != null && unit != null && unit.trim().isNotEmpty) {
+      factor = _computeUnitFactor(
+        amount: quantity,
+        amountUnit: unit.trim().toLowerCase(),
+        baseAmount: foodQty,
+        baseUnit: foodUnit.trim().toLowerCase(),
+      );
+    }
+
+    int calories = (food.calories * factor).round();
+    int proteinG = (food.proteinG * factor).round();
+    int carbsG = (food.carbsG * factor).round();
+    int fatsG = (food.fatsG * factor).round();
 
     await _db.into(_db.mealItems).insert(MealItemsCompanion.insert(
       mealId: mealId,
@@ -188,6 +200,130 @@ class FoodRepository {
       carbsG: Value(carbsG),
       fatsG: Value(fatsG),
     ));
+  }
+
+  // Compute factor relative to a food's defined serving (baseAmount baseUnit)
+  double _computeUnitFactor({
+    required double amount,
+    required String amountUnit,
+    required double baseAmount,
+    required String baseUnit,
+  }) {
+    // Normalize units
+    final uA = _normalizeUnit(amountUnit);
+    final uB = _normalizeUnit(baseUnit);
+    if (uA == 'serving' && uB == 'serving') {
+      return amount / baseAmount;
+    }
+    // Same unit -> direct ratio
+    if (uA == uB) {
+      return amount / baseAmount;
+    }
+    // Weight domain
+    if (_isWeight(uA) && _isWeight(uB)) {
+      final aG = _toGrams(amount, uA);
+      final bG = _toGrams(baseAmount, uB);
+      if (bG == 0) return amount; // fallback
+      return aG / bG;
+    }
+    // Volume domain
+    if (_isVolume(uA) && _isVolume(uB)) {
+      final aMl = _toMilliliters(amount, uA);
+      final bMl = _toMilliliters(baseAmount, uB);
+      if (bMl == 0) return amount; // fallback
+      return aMl / bMl;
+    }
+    // Fallback to multiplier as entered amount (treat as factor)
+    return amount;
+  }
+
+  String _normalizeUnit(String u) {
+    final v = u.trim().toLowerCase();
+    switch (v) {
+      case 'g':
+      case 'gram':
+      case 'grams':
+        return 'g';
+      case 'kg':
+      case 'kilogram':
+      case 'kilograms':
+        return 'kg';
+      case 'oz':
+      case 'ounce':
+      case 'ounces':
+        return 'oz';
+      case 'lb':
+      case 'lbs':
+      case 'pound':
+      case 'pounds':
+        return 'lb';
+      case 'ml':
+      case 'milliliter':
+      case 'milliliters':
+        return 'ml';
+      case 'l':
+      case 'liter':
+      case 'liters':
+        return 'l';
+      case 'tsp':
+      case 'teaspoon':
+      case 'teaspoons':
+        return 'tsp';
+      case 'tbsp':
+      case 'tablespoon':
+      case 'tablespoons':
+        return 'tbsp';
+      case 'fl oz':
+      case 'floz':
+      case 'fluid ounce':
+      case 'fluid ounces':
+        return 'fl oz';
+      case 'cup':
+      case 'cups':
+        return 'cup';
+      case 'serving':
+      case 'servings':
+        return 'serving';
+      default:
+        return v;
+    }
+  }
+
+  bool _isWeight(String u) => u == 'g' || u == 'kg' || u == 'oz' || u == 'lb';
+  bool _isVolume(String u) => u == 'ml' || u == 'l' || u == 'tsp' || u == 'tbsp' || u == 'fl oz' || u == 'cup';
+
+  double _toGrams(double qty, String unit) {
+    switch (unit) {
+      case 'g':
+        return qty;
+      case 'kg':
+        return qty * 1000.0;
+      case 'oz':
+        return qty * 28.349523125;
+      case 'lb':
+        return qty * 453.59237;
+      default:
+        return qty; // unknown assume grams
+    }
+  }
+
+  double _toMilliliters(double qty, String unit) {
+    switch (unit) {
+      case 'ml':
+        return qty;
+      case 'l':
+        return qty * 1000.0;
+      case 'tsp':
+        return qty * 5.0;
+      case 'tbsp':
+        return qty * 15.0;
+      case 'fl oz':
+        return qty * 29.5735295625; // US fluid ounce
+      case 'cup':
+        return qty * 240.0; // US cup
+      default:
+        return qty; // unknown assume ml
+    }
   }
 
   Future<void> addCustomFoodToMeal({

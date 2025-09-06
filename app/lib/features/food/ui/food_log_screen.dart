@@ -21,8 +21,10 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
   // Quantity/unit prompt, then add an existing food to the selected meal
 
   Future<void> _promptAndAddRecent({required int foodId}) async {
-    final qtyController = TextEditingController(text: '1');
-    final unitController = TextEditingController();
+    final repo = ref.read(foodRepositoryProvider);
+    final food = await repo.getFoodById(foodId);
+    final qtyController = TextEditingController(text: (food?.servingQty?.toString() ?? '1'));
+    String unitValue = (food?.servingUnit ?? 'serving');
     final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<(double qty, String? unit)>(
       context: context,
@@ -32,14 +34,30 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (food?.servingQty != null && (food?.servingUnit ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text('Base serving: ${food!.servingQty} ${food.servingUnit}', style: Theme.of(ctx).textTheme.bodySmall),
+                ),
               TextField(
                 controller: qtyController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Quantity'),
               ),
-              TextField(
-                controller: unitController,
-                decoration: const InputDecoration(labelText: 'Unit (optional)'),
+              DropdownButtonFormField<String>(
+                value: unitValue,
+                items: const [
+                  DropdownMenuItem(value: 'serving', child: Text('serving')),
+                  DropdownMenuItem(value: 'ml', child: Text('ml')),
+                  DropdownMenuItem(value: 'tsp', child: Text('tsp')),
+                  DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
+                  DropdownMenuItem(value: 'fl oz', child: Text('Fluid ounce')),
+                  DropdownMenuItem(value: 'cup', child: Text('cup')),
+                  DropdownMenuItem(value: 'g', child: Text('gram (g)')),
+                  DropdownMenuItem(value: 'oz', child: Text('oz')),
+                ],
+                onChanged: (v) => unitValue = v ?? unitValue,
+                decoration: const InputDecoration(labelText: 'Unit'),
               ),
             ],
           ),
@@ -48,7 +66,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
             ElevatedButton(
               onPressed: () {
                 final q = double.tryParse(qtyController.text) ?? 1.0;
-                final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
+                final u = (unitValue.trim().isEmpty ? null : unitValue.trim());
                 Navigator.of(ctx).pop((q, u));
               },
               child: const Text('Add'),
@@ -59,7 +77,6 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     );
     if (result == null) return;
     final (qty, unit) = result;
-    final repo = ref.read(foodRepositoryProvider);
     await repo.addExistingFoodToMeal(foodId: foodId, mealType: _mealType, quantity: qty, unit: unit);
     if (!mounted) return;
     messenger.showSnackBar(const SnackBar(content: Text('Food added')));
