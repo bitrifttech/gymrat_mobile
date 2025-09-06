@@ -135,3 +135,15 @@
 - QA: Verified cross-tab sync (Tasks ↔ Schedule), copy/clear behavior, and Home completion toggles.
 
 -- Milestone 7 closed. --
+
+## Implementation Plan Alignment: Milestones 8 and 9
+
+- Milestone 8 (Analytics – Basic Weekly): Completed
+  - Diet: Weekly trend line for calories/protein/carbs/fats with range selector (week/month/all-time) and polished axes/tooltips.
+  - Workouts: Weekly volume chart and Top exercises by volume with tooltips.
+  - Habits: Weekly completion bar chart.
+  - Notes: Implemented as Metrics screen; analyzer clean and validated with seeded data.
+
+- Milestone 9 (Templates – Workouts only): Completed (Meal templates removed by product decision)
+  - Workouts: Create/rename/delete workouts; add exercises with targets (sets, reps range) and rest seconds; drag-reorder; schedule per day; start/resume from schedule; use template targets in Active workout.
+  - Meals: Meal templates intentionally not implemented; UI and quick-add flows removed from Configure and Log Food per scope change.
