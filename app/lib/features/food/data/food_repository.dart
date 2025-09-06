@@ -145,6 +145,7 @@ class FoodRepository {
     final day = _dateOnly(date);
     final existing = await (_db.select(_db.meals)
           ..where((m) => m.userId.equals(userId) & m.date.equals(day) & m.mealType.equals(mealType))
+          ..orderBy([(m) => OrderingTerm.asc(m.createdAt)])
           ..limit(1))
         .getSingleOrNull();
     if (existing != null) return existing.id;
