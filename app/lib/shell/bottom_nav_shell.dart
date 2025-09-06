@@ -193,7 +193,6 @@ class _TemplatesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final workoutTemplates = ref.watch(templatesProvider);
-    final mealTemplates = ref.watch(mealTemplatesProvider);
     return Column(
       children: [
         Padding(
@@ -226,34 +225,6 @@ class _TemplatesTab extends ConsumerWidget {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final name = await showDialog<String>(
-                  context: context,
-                  builder: (ctx) {
-                    final ctrl = TextEditingController();
-                    return AlertDialog(
-                      title: const Text('New Meal Template'),
-                      content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Template name')),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Create')),
-                      ],
-                    );
-                  },
-                );
-                if (name == null || name.isEmpty) return;
-                await ref.read(foodRepositoryProvider).createMealTemplate(name);
-              },
-              icon: const Icon(Icons.restaurant_menu),
-              label: const Text('Add Meal Template'),
-            ),
-          ),
-        ),
         Expanded(
           child: workoutTemplates.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -283,33 +254,6 @@ class _TemplatesTab extends ConsumerWidget {
                           },
                         ),
                       ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: mealTemplates.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Error: $e')),
-            data: (list) {
-              if (list.isEmpty) return const Center(child: Text('No meal templates'));
-              return ListView.builder(
-                itemCount: list.length,
-                itemBuilder: (ctx, i) {
-                  final t = list[i];
-                  return ListTile(
-                    leading: const Icon(Icons.restaurant_menu),
-                    title: Text(t.name),
-                    trailing: IconButton(
-                      tooltip: 'Delete',
-                      icon: const Icon(Icons.delete),
-                      onPressed: () async {
-                        await ref.read(foodRepositoryProvider).deleteMealTemplate(t.id);
-                      },
                     ),
                   );
                 },
