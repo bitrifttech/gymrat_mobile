@@ -496,6 +496,41 @@ class FoodRepository {
     ));
   }
 
+  Future<void> updateItemQuantityAndUnit({
+    required int itemId,
+    required double quantity,
+    String? unit,
+  }) async {
+    final item = await (_db.select(_db.mealItems)..where((i) => i.id.equals(itemId))).getSingle();
+    final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
+
+    double factor = quantity;
+    final baseQty = food.servingQty;
+    final baseUnit = food.servingUnit;
+    if (baseQty != null && baseUnit != null && unit != null && unit.trim().isNotEmpty) {
+      factor = _computeUnitFactor(
+        amount: quantity,
+        amountUnit: unit.trim().toLowerCase(),
+        baseAmount: baseQty,
+        baseUnit: baseUnit.trim().toLowerCase(),
+      );
+    }
+
+    final newCalories = (food.calories * factor).round();
+    final newProtein = (food.proteinG * factor).round();
+    final newCarbs = (food.carbsG * factor).round();
+    final newFats = (food.fatsG * factor).round();
+
+    await (_db.update(_db.mealItems)..where((i) => i.id.equals(itemId))).write(MealItemsCompanion(
+      quantity: Value(quantity),
+      unit: Value(unit),
+      calories: Value(newCalories),
+      proteinG: Value(newProtein),
+      carbsG: Value(newCarbs),
+      fatsG: Value(newFats),
+    ));
+  }
+
   Future<void> deleteMealItem(int itemId) async {
     await (_db.delete(_db.mealItems)..where((i) => i.id.equals(itemId))).go();
   }

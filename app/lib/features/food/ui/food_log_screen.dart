@@ -165,44 +165,101 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                   itemBuilder: (ctx, i) {
                     final (mi, f) = items[i];
                     return Card(
-                      child: ListTile(
-                        title: Text(f.name),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
                           children: [
-                            if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
-                              Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
-                            if (f.servingQty != null && (f.servingUnit ?? '').isNotEmpty)
-                              Text('Serving: ${f.servingQty} ${f.servingUnit}'),
-                            Text('Qty ${mi.quantity.toStringAsFixed(2)}${mi.unit == null ? '' : ' ${mi.unit}'} • P ${mi.proteinG}g • C ${mi.carbsG}g • F ${mi.fatsG}g'),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('${mi.calories} kcal'),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              tooltip: 'Remove',
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () async {
-                                final ok = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Remove item?'),
-                                    content: Text('Remove "${f.name}" from ${_prettyMeal(_mealType)}?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
-                                    ],
-                                  ),
-                                );
-                                if (ok == true) {
-                                  await ref.read(foodRepositoryProvider).deleteMealItem(mi.id);
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed')));
-                                }
-                              },
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(f.name, style: Theme.of(context).textTheme.bodyLarge),
+                                  if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
+                                    Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                                  if (f.servingQty != null && (f.servingUnit ?? '').isNotEmpty)
+                                    Text('Serving: ${f.servingQty} ${f.servingUnit}'),
+                                  Text('P ${mi.proteinG}g • C ${mi.carbsG}g • F ${mi.fatsG}g'),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('${mi.calories} kcal'),
+                                IconButton(
+                                  tooltip: 'Edit',
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () async {
+                                    final r = await showDialog<(double, String?)>(
+                                      context: context,
+                                      builder: (ctx) {
+                                        final qtyCtrl = TextEditingController(text: mi.quantity.toStringAsFixed(2));
+                                        String unitVal = mi.unit ?? (f.servingUnit ?? 'serving');
+                                        return AlertDialog(
+                                          title: const Text('Edit Item'),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity')),
+                                              DropdownButtonFormField<String>(
+                                                value: unitVal,
+                                                items: const [
+                                                  DropdownMenuItem(value: 'serving', child: Text('serving')),
+                                                  DropdownMenuItem(value: 'ml', child: Text('ml')),
+                                                  DropdownMenuItem(value: 'tsp', child: Text('tsp')),
+                                                  DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
+                                                  DropdownMenuItem(value: 'fl oz', child: Text('fl oz')),
+                                                  DropdownMenuItem(value: 'cup', child: Text('cup')),
+                                                  DropdownMenuItem(value: 'g', child: Text('g')),
+                                                  DropdownMenuItem(value: 'oz', child: Text('oz')),
+                                                ],
+                                                onChanged: (v) => unitVal = v ?? unitVal,
+                                                decoration: const InputDecoration(labelText: 'Unit'),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                            TextButton(
+                                              onPressed: () {
+                                                final q = double.tryParse(qtyCtrl.text) ?? mi.quantity;
+                                                Navigator.pop(ctx, (q, unitVal));
+                                              },
+                                              child: const Text('Save'),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                    if (r != null) {
+                                      final (q, u) = r;
+                                      await ref.read(foodRepositoryProvider).updateItemQuantityAndUnit(itemId: mi.id, quantity: q, unit: u);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  tooltip: 'Remove',
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () async {
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Remove item?'),
+                                        content: Text('Remove "${f.name}" from ${_prettyMeal(_mealType)}?'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+                                        ],
+                                      ),
+                                    );
+                                    if (ok == true) {
+                                      await ref.read(foodRepositoryProvider).deleteMealItem(mi.id);
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed')));
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
