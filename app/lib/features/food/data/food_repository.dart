@@ -285,13 +285,20 @@ class FoodRepository {
 
   Stream<List<(Meal, List<(MealItem, Food)>)>> watchMealsForDay(DateTime date) {
     final day = _dateOnly(date);
-    final mealsStream = (_db.select(_db.meals)..where((m) => m.date.equals(day))).watch();
-    return mealsStream.asyncMap((meals) async {
+    // Trigger stream on any change to meals or meal_items for the given day
+    final trigger = _db.customSelect(
+      'SELECT m.id '
+      'FROM meals m '
+      'LEFT JOIN meal_items mi ON mi.meal_id = m.id '
+      'WHERE m.date = ?1',
+      variables: [Variable<DateTime>(day)],
+      readsFrom: {_db.meals, _db.mealItems},
+    ).watch();
+    return trigger.asyncMap((_) async {
+      final meals = await (_db.select(_db.meals)..where((m) => m.date.equals(day))).get();
       final result = <(Meal, List<(MealItem, Food)>)>[];
       for (final meal in meals) {
-        final items = await (_db.select(_db.mealItems)
-              ..where((i) => i.mealId.equals(meal.id)))
-            .get();
+        final items = await (_db.select(_db.mealItems)..where((i) => i.mealId.equals(meal.id))).get();
         final pairs = <(MealItem, Food)>[];
         for (final item in items) {
           final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
@@ -367,7 +374,7 @@ class FoodRepository {
       readsFrom: {_db.meals, _db.mealItems},
     ).get();
 
-    DateTime _toDate(Object? v) {
+    DateTime toDate(Object? v) {
       if (v is DateTime) return _dateOnly(v);
       if (v is int) return _dateOnly(DateTime.fromMillisecondsSinceEpoch(v));
       if (v is String) {
@@ -376,7 +383,7 @@ class FoodRepository {
       return today;
     }
 
-    final map = {for (final r in rows) _toDate(r.data['d']): r};
+    final map = {for (final r in rows) toDate(r.data['d']): r};
     final result = <DailyMacroTotals>[];
     for (int i = 0; i < days; i++) {
       final d = since.add(Duration(days: i));
@@ -425,13 +432,13 @@ class FoodRepository {
       variables: [Variable<DateTime>(s), Variable<DateTime>(e)],
       readsFrom: {_db.meals, _db.mealItems},
     ).get();
-    DateTime _toDate(Object? v) {
+    DateTime toDate(Object? v) {
       if (v is DateTime) return _dateOnly(v);
       if (v is int) return _dateOnly(DateTime.fromMillisecondsSinceEpoch(v));
       if (v is String) { try { return _dateOnly(DateTime.parse(v)); } catch (_) {} }
       return _dateOnly(DateTime.now());
     }
-    final map = {for (final r in rows) _toDate(r.data['d']): r};
+    final map = {for (final r in rows) toDate(r.data['d']): r};
     final result = <DailyMacroTotals>[];
     for (DateTime d = s; !d.isAfter(e); d = d.add(const Duration(days: 1))) {
       final row = map[d];
