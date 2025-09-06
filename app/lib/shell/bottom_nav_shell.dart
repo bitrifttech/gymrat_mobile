@@ -277,6 +277,8 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
     final name = TextEditingController();
     final brand = TextEditingController();
     final serving = TextEditingController();
+    final servingQty = TextEditingController();
+    String servingUnit = 'serving';
     final cal = TextEditingController();
     final p = TextEditingController();
     final c = TextEditingController();
@@ -292,6 +294,27 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
               TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
               TextField(controller: brand, decoration: const InputDecoration(labelText: 'Brand')),
               TextField(controller: serving, decoration: const InputDecoration(labelText: 'Serving desc')),
+              Row(children: [
+                Expanded(child: TextField(controller: servingQty, decoration: const InputDecoration(labelText: 'Serving qty'), keyboardType: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: servingUnit,
+                    items: const [
+                      DropdownMenuItem(value: 'serving', child: Text('serving')),
+                      DropdownMenuItem(value: 'ml', child: Text('ml')),
+                      DropdownMenuItem(value: 'tsp', child: Text('tsp')),
+                      DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
+                      DropdownMenuItem(value: 'fl oz', child: Text('Fluid ounce')),
+                      DropdownMenuItem(value: 'cup', child: Text('cup')),
+                      DropdownMenuItem(value: 'g', child: Text('gram')),
+                      DropdownMenuItem(value: 'oz', child: Text('oz')),
+                    ],
+                    onChanged: (v) => servingUnit = v ?? 'serving',
+                    decoration: const InputDecoration(labelText: 'Serving unit'),
+                  ),
+                ),
+              ]),
               TextField(controller: cal, decoration: const InputDecoration(labelText: 'Calories'), keyboardType: TextInputType.number),
               TextField(controller: p, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number),
               TextField(controller: c, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number),
@@ -310,6 +333,8 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
         name: name.text.trim(),
         brand: brand.text.trim().isEmpty ? null : brand.text.trim(),
         servingDesc: serving.text.trim().isEmpty ? null : serving.text.trim(),
+        servingQty: double.tryParse(servingQty.text.trim()),
+        servingUnit: servingUnit,
         calories: int.tryParse(cal.text) ?? 0,
         proteinG: int.tryParse(p.text) ?? 0,
         carbsG: int.tryParse(c.text) ?? 0,
