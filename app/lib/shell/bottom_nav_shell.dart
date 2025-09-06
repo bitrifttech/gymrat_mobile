@@ -66,11 +66,11 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
           controller: _tabController,
           isScrollable: true,
           tabs: const [
-            Tab(text: 'Templates', icon: Icon(Icons.article)),
+            Tab(text: 'Workouts', icon: Icon(Icons.article)),
             Tab(text: 'Foods', icon: Icon(Icons.restaurant)),
+            Tab(text: 'Tasks', icon: Icon(Icons.check_circle)),
             Tab(text: 'Schedule', icon: Icon(Icons.calendar_today)),
             Tab(text: 'Profile', icon: Icon(Icons.settings)),
-            Tab(text: 'Tasks', icon: Icon(Icons.check_circle)),
           ],
         ),
       ),
@@ -79,9 +79,9 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
         children: [
           const _TemplatesTab(),
           const _FoodsTab(),
+          const TasksManageTab(),
           const ScheduleScreen(),
           const EditSettingsScreen(),
-          const TasksManageTab(),
         ],
       ),
     );
