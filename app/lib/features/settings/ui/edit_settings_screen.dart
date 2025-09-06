@@ -6,9 +6,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive_io.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:ui' show Rect, Offset;
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
 class EditSettingsScreen extends ConsumerStatefulWidget {
   const EditSettingsScreen({super.key});
@@ -143,15 +142,9 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
       encoder.close();
 
       if (!mounted) return;
-      final box = context.findRenderObject() as RenderBox?;
-      await Share.shareXFiles(
-        [XFile(outPath, mimeType: 'application/zip', name: backupName)],
-        text: 'GymRat backup ($now)',
-        subject: 'GymRat backup',
-        sharePositionOrigin: (box != null)
-            ? (box.localToGlobal(Offset.zero) & box.size)
-            : const Rect.fromLTWH(0, 0, 1, 1),
-      );
+      // Use native Files save panel on iOS for reliability
+      final params = SaveFileDialogParams(sourceFilePath: outPath, fileName: backupName);
+      await FlutterFileDialog.saveFile(params: params);
     } finally {
       if (mounted) setState(() => _backupBusy = false);
     }
