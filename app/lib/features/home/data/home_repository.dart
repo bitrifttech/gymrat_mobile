@@ -13,6 +13,13 @@ class HomeRepository {
       ..limit(1));
     return query.getSingleOrNull();
   }
+
+  Stream<Goal?> watchLatestGoal() {
+    final query = (_db.select(_db.goals)
+      ..orderBy([(g) => OrderingTerm.desc(g.createdAt)])
+      ..limit(1));
+    return query.watchSingleOrNull();
+  }
 }
 
 final homeRepositoryProvider = Provider<HomeRepository>((ref) {
@@ -20,6 +27,6 @@ final homeRepositoryProvider = Provider<HomeRepository>((ref) {
   return HomeRepository(db);
 });
 
-final latestGoalProvider = FutureProvider<Goal?>((ref) async {
-  return ref.read(homeRepositoryProvider).readLatestGoal();
+final latestGoalProvider = StreamProvider<Goal?>((ref) {
+  return ref.read(homeRepositoryProvider).watchLatestGoal();
 });

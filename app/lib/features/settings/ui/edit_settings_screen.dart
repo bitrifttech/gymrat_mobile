@@ -80,6 +80,47 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
             carbsG: int.tryParse(_carbs.text),
             fatsG: int.tryParse(_fats.text),
           ));
+      // Reconcile macros against calories if needed (never modify calories or protein)
+      final maxKcal = int.tryParse(_calMax.text);
+      final proteinG = int.tryParse(_protein.text);
+      if (maxKcal != null && proteinG != null) {
+        final kcalFromProtein = proteinG * 4;
+        int? carbsG = int.tryParse(_carbs.text);
+        int? fatsG = int.tryParse(_fats.text);
+        int remaining = maxKcal - kcalFromProtein;
+        remaining = remaining < 0 ? 0 : remaining;
+        if ((carbsG == null || carbsG <= 0) && (fatsG == null || fatsG <= 0)) {
+          // Default split 50/50 by calories
+          final carbsKcal = (remaining / 2).round();
+          final fatsKcal = remaining - carbsKcal;
+          carbsG = (carbsKcal / 4).round();
+          fatsG = (fatsKcal / 9).round();
+        } else if (carbsG != null && carbsG > 0 && (fatsG == null || fatsG <= 0)) {
+          // Carbs set: fats = remainder
+          final carbsKcal = carbsG * 4;
+          int fatsKcal = remaining - carbsKcal;
+          fatsKcal = fatsKcal < 0 ? 0 : fatsKcal;
+          fatsG = (fatsKcal / 9).round();
+        } else if (fatsG != null && fatsG > 0 && (carbsG == null || carbsG <= 0)) {
+          // Fats set: carbs = remainder
+          final fatsKcal = fatsG * 9;
+          int carbsKcal = remaining - fatsKcal;
+          carbsKcal = carbsKcal < 0 ? 0 : carbsKcal;
+          carbsG = (carbsKcal / 4).round();
+        }
+        await ref.read(settingsRepositoryProvider).save(ProfileGoals(
+          ageYears: int.tryParse(_age.text),
+          heightCm: heightCm,
+          weightKg: weightKg,
+          gender: _sex,
+          activityLevel: _activity,
+          caloriesMin: int.tryParse(_calMin.text),
+          caloriesMax: maxKcal,
+          proteinG: proteinG,
+          carbsG: carbsG,
+          fatsG: fatsG,
+        ));
+      }
       if (!mounted) return;
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
