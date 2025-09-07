@@ -285,6 +285,9 @@ class FoodRepository {
       case 'serving':
       case 'servings':
         return 'serving';
+      case 'slice':
+      case 'slices':
+        return 'slice';
       default:
         return v;
     }

@@ -302,6 +302,7 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
                     value: servingUnit,
                     items: const [
                       DropdownMenuItem(value: 'serving', child: Text('serving')),
+                      DropdownMenuItem(value: 'slice', child: Text('slice')),
                       DropdownMenuItem(value: 'ml', child: Text('ml')),
                       DropdownMenuItem(value: 'tsp', child: Text('tsp')),
                       DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
@@ -374,6 +375,7 @@ class _FoodsTabState extends ConsumerState<_FoodsTab> {
                     value: servingUnit,
                     items: const [
                       DropdownMenuItem(value: 'serving', child: Text('serving')),
+                      DropdownMenuItem(value: 'slice', child: Text('slice')),
                       DropdownMenuItem(value: 'ml', child: Text('ml')),
                       DropdownMenuItem(value: 'tsp', child: Text('tsp')),
                       DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
