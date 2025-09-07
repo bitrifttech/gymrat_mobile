@@ -38,7 +38,7 @@ class SettingsRepository {
           ..limit(1))
         .getSingleOrNull();
     final goal = await (_db.select(_db.goals)
-          ..orderBy([(g) => OrderingTerm.desc(g.createdAt)])
+          ..orderBy([(g) => OrderingTerm.desc(g.id)])
           ..limit(1))
         .getSingleOrNull();
     return ProfileGoals(
@@ -87,14 +87,29 @@ class SettingsRepository {
             activityLevel: Value(pg.activityLevel),
           ),
         );
-        await _db.into(_db.goals).insert(GoalsCompanion.insert(
-          userId: user.id,
-          caloriesMin: pg.caloriesMin ?? 2000,
-          caloriesMax: pg.caloriesMax ?? 2200,
-          proteinG: pg.proteinG ?? 150,
-          carbsG: pg.carbsG ?? 250,
-          fatsG: pg.fatsG ?? 70,
-        ));
+        final latest = await (_db.select(_db.goals)
+              ..where((g) => g.userId.equals(user.id))
+              ..orderBy([(g) => OrderingTerm.desc(g.id)])
+              ..limit(1))
+            .getSingleOrNull();
+        if (latest == null) {
+          await _db.into(_db.goals).insert(GoalsCompanion.insert(
+            userId: user.id,
+            caloriesMin: pg.caloriesMin ?? 2000,
+            caloriesMax: pg.caloriesMax ?? 2200,
+            proteinG: pg.proteinG ?? 150,
+            carbsG: pg.carbsG ?? 250,
+            fatsG: pg.fatsG ?? 70,
+          ));
+        } else {
+          await (_db.update(_db.goals)..where((g) => g.id.equals(latest.id))).write(GoalsCompanion(
+            caloriesMin: Value(pg.caloriesMin ?? latest.caloriesMin),
+            caloriesMax: Value(pg.caloriesMax ?? latest.caloriesMax),
+            proteinG: Value(pg.proteinG ?? latest.proteinG),
+            carbsG: Value(pg.carbsG ?? latest.carbsG),
+            fatsG: Value(pg.fatsG ?? latest.fatsG),
+          ));
+        }
       }
     });
   }
