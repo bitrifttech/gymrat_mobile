@@ -122,6 +122,15 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     }
   }
 
+  ButtonStyle _mealBtnStyle(String type, BuildContext context) {
+    final selected = _mealType == type;
+    final scheme = Theme.of(context).colorScheme;
+    return ElevatedButton.styleFrom(
+      backgroundColor: selected ? scheme.primary : null,
+      foregroundColor: selected ? scheme.onPrimary : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final meals = ref.watch(todaysMealsProvider);
@@ -138,6 +147,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
+                    style: _mealBtnStyle('breakfast', context),
                     onPressed: () => setState(() => _mealType = 'breakfast'),
                     child: const Text('Breakfast'),
                   ),
@@ -145,6 +155,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
+                    style: _mealBtnStyle('lunch', context),
                     onPressed: () => setState(() => _mealType = 'lunch'),
                     child: const Text('Lunch'),
                   ),
@@ -152,6 +163,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
+                    style: _mealBtnStyle('dinner', context),
                     onPressed: () => setState(() => _mealType = 'dinner'),
                     child: const Text('Dinner'),
                   ),
@@ -159,6 +171,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
+                    style: _mealBtnStyle('snack', context),
                     onPressed: () => setState(() => _mealType = 'snack'),
                     child: const Text('Snack'),
                   ),
