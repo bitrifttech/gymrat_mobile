@@ -127,6 +127,8 @@ class SettingsRepository {
       await _db.customStatement('DELETE FROM settings');
       // Optional: reset autoincrement counters
       await _db.customStatement('DELETE FROM sqlite_sequence');
+      // Prevent demo reseed on next launch
+      await _db.upsertSetting('demoSeeded', 'true');
     });
   }
 }
