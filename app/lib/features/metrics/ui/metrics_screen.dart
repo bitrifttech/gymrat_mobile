@@ -204,6 +204,7 @@ class _MacroChart extends StatelessWidget {
         if (v > maxY) maxY = v;
         series[l].add(FlSpot(i.toDouble(), v));
       }
+      // Deduplicate labels for x-axis: only add a label when day changes
       labels.add('${d.date.month}/${d.date.day}');
     }
 
@@ -212,6 +213,8 @@ class _MacroChart extends StatelessWidget {
       bars.add(LineChartBarData(
         spots: series[l],
         isCurved: true,
+        preventCurveOverShooting: true,
+        curveSmoothness: 0.15,
         barWidth: 3,
         color: colors[l % colors.length],
         dotData: const FlDotData(show: false),
@@ -238,9 +241,12 @@ class _MacroChart extends StatelessWidget {
                 if (v >= chartMaxY - 1e-6) return const SizedBox.shrink();
                 return Text(_kLabel(v), style: const TextStyle(fontSize: 10));
               })),
-              bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 22, getTitlesWidget: (v, m) {
-                final idx = v.toInt();
+              bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 22, interval: (data.length/6).clamp(1, 7).toDouble(), getTitlesWidget: (v, m) {
+                final idx = v.round();
                 if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
+                // Show fewer ticks: only show when index aligns to interval
+                final intervalIdx = (data.length/6).clamp(1, 7).toInt();
+                if ((idx % intervalIdx) != 0) return const SizedBox.shrink();
                 return Text(labels[idx], style: const TextStyle(fontSize: 10));
               })),
             ),
@@ -262,6 +268,7 @@ class _MacroChart extends StatelessWidget {
             ),
             minY: 0,
             maxY: chartMaxY,
+            clipData: const FlClipData.all(),
           )),
         ),
       ),

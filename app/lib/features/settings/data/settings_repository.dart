@@ -34,7 +34,7 @@ class SettingsRepository {
 
   Future<ProfileGoals> load() async {
     final user = await (_db.select(_db.users)
-          ..orderBy([(u) => OrderingTerm.desc(u.createdAt)])
+          ..orderBy([(u) => OrderingTerm.desc(u.id)])
           ..limit(1))
         .getSingleOrNull();
     final goal = await (_db.select(_db.goals)
@@ -80,11 +80,11 @@ class SettingsRepository {
       } else {
         await (_db.update(_db.users)..where((u) => u.id.equals(user.id))).write(
           UsersCompanion(
-            ageYears: Value(pg.ageYears),
-            heightCm: Value(pg.heightCm),
-            weightKg: Value(pg.weightKg),
-            gender: Value(pg.gender),
-            activityLevel: Value(pg.activityLevel),
+            ageYears: pg.ageYears == null ? const Value.absent() : Value(pg.ageYears),
+            heightCm: pg.heightCm == null ? const Value.absent() : Value(pg.heightCm),
+            weightKg: pg.weightKg == null ? const Value.absent() : Value(pg.weightKg),
+            gender: pg.gender == null ? const Value.absent() : Value(pg.gender),
+            activityLevel: pg.activityLevel == null ? const Value.absent() : Value(pg.activityLevel),
           ),
         );
         final latest = await (_db.select(_db.goals)
