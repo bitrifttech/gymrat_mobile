@@ -19,6 +19,8 @@ class MacroRing extends StatelessWidget {
     final clampedTarget = target <= 0 ? 1.0 : target;
     final progress = (current / clampedTarget).clamp(0.0, 1.0);
     final theme = Theme.of(context);
+    final exceeded = current > clampedTarget;
+    final ringColor = exceeded ? theme.colorScheme.error : theme.colorScheme.primary;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -36,7 +38,7 @@ class MacroRing extends StatelessWidget {
                   value: progress,
                   strokeWidth: 10,
                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(ringColor),
                 ),
               ),
               Column(
