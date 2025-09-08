@@ -121,6 +121,68 @@ class _WorkoutDetailBody extends ConsumerWidget {
   const _WorkoutDetailBody({required this.workoutId});
   final int workoutId;
 
+  Future<void> _showAddExerciseDialog(BuildContext context, WidgetRef ref) async {
+    final nameCtrl = TextEditingController();
+    final repsCtrl = TextEditingController();
+    final weightCtrl = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Exercise'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Exercise name'),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: repsCtrl,
+              decoration: const InputDecoration(labelText: 'Reps (optional)'),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: weightCtrl,
+              decoration: const InputDecoration(labelText: 'Weight (optional)'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Enter an exercise name')));
+                return;
+              }
+              Navigator.of(ctx).pop(true);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (result != true) return;
+    final name = nameCtrl.text.trim();
+    final reps = int.tryParse(repsCtrl.text);
+    final weight = double.tryParse(weightCtrl.text);
+    final repo = ref.read(workoutRepositoryProvider);
+    final weId = await repo.addExerciseToWorkout(workoutId: workoutId, exerciseName: name);
+    if (reps != null || weight != null) {
+      await repo.addSet(workoutExerciseId: weId, weight: weight, reps: reps);
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exercise added')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final exercises = ref.watch(workoutExercisesProvider(workoutId));
@@ -129,10 +191,22 @@ class _WorkoutDetailBody extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Error: $e')),
       data: (pairs) {
-        if (pairs.isEmpty) return const Center(child: Text('No exercises'));
         return ListView(
           padding: const EdgeInsets.all(12),
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () => _showAddExerciseDialog(context, ref),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Exercise'),
+              ),
+            ),
+            if (pairs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Text('No exercises yet'),
+              ),
             for (final (we, ex) in pairs)
               Card(
                 child: Padding(
