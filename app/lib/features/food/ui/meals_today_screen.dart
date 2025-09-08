@@ -14,7 +14,7 @@ class MealsTodayScreen extends ConsumerWidget {
         title: const Text('Edit Quantity'),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(labelText: 'Quantity'),
         ),
         actions: [
