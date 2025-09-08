@@ -45,8 +45,52 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
               ),
               TextField(
                 controller: qtyController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Decrease',
+                    onPressed: () {
+                      final v = (double.tryParse(qtyController.text) ?? 0) - 1;
+                      qtyController.text = (v < 0 ? 0 : v).toStringAsFixed(2);
+                    },
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  IconButton(
+                    tooltip: 'Increase',
+                    onPressed: () {
+                      final v = (double.tryParse(qtyController.text) ?? 0) + 1;
+                      qtyController.text = v.toStringAsFixed(2);
+                    },
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final frac in const [
+                      ('1/4', 0.25),
+                      ('1/3', 1.0/3.0),
+                      ('1/2', 0.5),
+                      ('2/3', 2.0/3.0),
+                      ('3/4', 0.75),
+                    ])
+                      ActionChip(
+                        label: Text(frac.$1),
+                        onPressed: () {
+                          qtyController.text = frac.$2.toStringAsFixed(2);
+                        },
+                      ),
+                  ],
+                ),
               ),
               TextField(
                 controller: unitController,

@@ -41,8 +41,32 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 ),
               TextField(
                 controller: qtyController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  IconButton(
+                    tooltip: 'Decrease',
+                    onPressed: () {
+                      final currentVal = double.tryParse(qtyController.text) ?? 0;
+                      final next = (currentVal - 1).clamp(0, double.infinity);
+                      qtyController.text = next.toStringAsFixed(2);
+                    },
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  IconButton(
+                    tooltip: 'Increase',
+                    onPressed: () {
+                      final currentVal = double.tryParse(qtyController.text) ?? 0;
+                      final next = currentVal + 1;
+                      qtyController.text = next.toStringAsFixed(2);
+                    },
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
               ),
               DropdownButtonFormField<String>(
                 value: unitValue,
@@ -59,6 +83,38 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 ],
                 onChanged: (v) => unitValue = v ?? unitValue,
                 decoration: const InputDecoration(labelText: 'Unit'),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final frac in const [
+                      ('1/4', 0.25),
+                      ('1/3', 1.0/3.0),
+                      ('1/2', 0.5),
+                      ('2/3', 2.0/3.0),
+                      ('3/4', 0.75),
+                    ])
+                      ActionChip(
+                        label: Text(frac.$1),
+                        onPressed: () {
+                          final baseQty = food?.servingQty;
+                          final baseUnit = _canonUnit(food?.servingUnit);
+                          final selectedUnit = _canonUnit(unitValue);
+                          double newQty;
+                          if (baseQty != null && baseUnit.isNotEmpty && selectedUnit == baseUnit) {
+                            newQty = baseQty * frac.$2;
+                          } else {
+                            newQty = frac.$2;
+                          }
+                          qtyController.text = newQty.toStringAsFixed(2);
+                        },
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
