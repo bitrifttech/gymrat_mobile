@@ -13,7 +13,6 @@ class TemplatesScreen extends ConsumerStatefulWidget {
 
 class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   final _templateCtrl = TextEditingController();
-  final _exerciseCtrl = TextEditingController();
   int? _selectedTemplateId;
 
   @override
@@ -25,8 +24,103 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   @override
   void dispose() {
     _templateCtrl.dispose();
-    _exerciseCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showAddExerciseDialog(BuildContext context) async {
+    if (_selectedTemplateId == null) return;
+    final nameCtrl = TextEditingController();
+    final setsCtrl = TextEditingController(text: '3');
+    final repsMinCtrl = TextEditingController();
+    final repsMaxCtrl = TextEditingController();
+    final restCtrl = TextEditingController(text: '90');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Exercise'),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Exercise name'),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: setsCtrl,
+                      decoration: const InputDecoration(labelText: 'Sets'),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: restCtrl,
+                      decoration: const InputDecoration(labelText: 'Rest (sec)'),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: repsMinCtrl,
+                      decoration: const InputDecoration(labelText: 'Reps min (opt)'),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: repsMaxCtrl,
+                      decoration: const InputDecoration(labelText: 'Reps max (opt)'),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final repo = ref.read(workoutRepositoryProvider);
+    final name = nameCtrl.text.trim();
+    final sets = int.tryParse(setsCtrl.text.trim()) ?? 3;
+    final repsMin = repsMinCtrl.text.trim().isEmpty ? null : int.tryParse(repsMinCtrl.text.trim());
+    final repsMax = repsMaxCtrl.text.trim().isEmpty ? null : int.tryParse(repsMaxCtrl.text.trim());
+    final rest = restCtrl.text.trim().isEmpty ? null : int.tryParse(restCtrl.text.trim());
+    final teId = await repo.addTemplateExercise(templateId: _selectedTemplateId!, exerciseName: name);
+    await repo.updateTemplateExerciseTargets(
+      templateExerciseId: teId,
+      setsCount: sets,
+      repsMin: repsMin,
+      repsMax: repsMax,
+      restSeconds: rest,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exercise added')));
   }
 
   @override
@@ -128,28 +222,13 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _exerciseCtrl,
-                          decoration: const InputDecoration(labelText: 'Add exercise to workout'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final name = _exerciseCtrl.text.trim();
-                          if (name.isEmpty) return;
-                          await ref.read(workoutRepositoryProvider).addTemplateExercise(
-                                templateId: _selectedTemplateId!,
-                                exerciseName: name,
-                              );
-                          _exerciseCtrl.clear();
-                        },
-                        child: const Text('Add'),
-                      ),
-                    ],
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showAddExerciseDialog(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Exercise'),
+                    ),
                   ),
                 ),
                 Expanded(
