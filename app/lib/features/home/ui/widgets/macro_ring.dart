@@ -17,10 +17,10 @@ class MacroRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clampedTarget = target <= 0 ? 1.0 : target;
-    final progress = (current / clampedTarget).clamp(0.0, 1.0);
     final theme = Theme.of(context);
-    final exceeded = current > clampedTarget;
-    final ringColor = exceeded ? theme.colorScheme.error : theme.colorScheme.primary;
+    final ratio = current / clampedTarget;
+    final baseProgress = ratio.clamp(0.0, 1.0);
+    final overflowProgress = ratio > 1.0 ? (ratio - 1.0).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -35,12 +35,23 @@ class MacroRing extends StatelessWidget {
                 width: 96,
                 height: 96,
                 child: CircularProgressIndicator(
-                  value: progress,
+                  value: baseProgress,
                   strokeWidth: 10,
                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation<Color>(ringColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                 ),
               ),
+              if (overflowProgress > 0)
+                SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: CircularProgressIndicator(
+                    value: overflowProgress,
+                    strokeWidth: 10,
+                    backgroundColor: Colors.transparent,
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.error),
+                  ),
+                ),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
