@@ -260,11 +260,10 @@ class _WorkoutDetailBody extends ConsumerWidget {
                             for (int i = 1; i <= (maxRows == 0 ? 1 : maxRows); i++) {
                               final existing = ss.where((s) => s.setIndex == i).toList();
                               final TextEditingController repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
-                              final TextEditingController weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(0) : '');
+                              final TextEditingController weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toString() : '');
                               Future<void> saveRow() async {
                                 final reps = int.tryParse(repsCtrl.text);
-                                final weightInt = int.tryParse(weightCtrl.text);
-                                final weight = weightInt?.toDouble();
+                                final weight = double.tryParse(weightCtrl.text);
                                 await ref.read(workoutRepositoryProvider).upsertSetByIndex(
                                       workoutExerciseId: we.id,
                                       setIndex: i,
@@ -292,8 +291,8 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                     Expanded(
                                       child: TextField(
                                         controller: weightCtrl,
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
                                         decoration: const InputDecoration(labelText: 'Weight'),
                                         onEditingComplete: () async { await saveRow(); },
                                         onSubmitted: (_) async { await saveRow(); },
