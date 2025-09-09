@@ -343,6 +343,8 @@ class _RestButtonState extends State<_RestButton> {
         t.cancel();
         setState(() => _remaining = 0);
         if (mounted) {
+          HapticFeedback.mediumImpact();
+          SystemSound.play(SystemSoundType.alert);
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
         }
       } else {
