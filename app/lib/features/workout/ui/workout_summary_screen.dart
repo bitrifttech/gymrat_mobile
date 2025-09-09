@@ -93,7 +93,7 @@ class WorkoutSummaryScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => context.pushNamed('metrics'),
+                  onPressed: () => context.goNamed('metrics'),
                   icon: const Icon(Icons.query_stats),
                   label: const Text('View Metrics'),
                 ),
