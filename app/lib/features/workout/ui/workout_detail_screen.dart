@@ -19,6 +19,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(workoutRepositoryProvider);
+    final detailKey = GlobalKey<_WorkoutDetailBodyState>();
     return FutureBuilder(
       future: repo.getWorkoutById(workoutId),
       builder: (ctx, snap) {
@@ -95,7 +96,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
           ),
           body: Column(
             children: [
-              Expanded(child: _WorkoutDetailBody(workoutId: workoutId)),
+              Expanded(child: _WorkoutDetailBody(key: detailKey, workoutId: workoutId)),
               if (finished == null)
                 SafeArea(
                   child: Padding(
@@ -105,8 +106,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           FocusScope.of(ctx).unfocus();
-                          // Give TextFields a moment to trigger onEditingComplete saves
-                          await Future.delayed(const Duration(milliseconds: 150));
+                          await detailKey.currentState?.saveAllEdits();
                           await repo.finishWorkout(w.id);
                           if (!ctx.mounted) return;
                           context.push('/workout/summary/${w.id}');
@@ -126,9 +126,37 @@ class WorkoutDetailScreen extends ConsumerWidget {
   }
 }
 
-class _WorkoutDetailBody extends ConsumerWidget {
-  const _WorkoutDetailBody({required this.workoutId});
+class _WorkoutDetailBody extends ConsumerStatefulWidget {
+  const _WorkoutDetailBody({super.key, required this.workoutId});
   final int workoutId;
+
+  @override
+  ConsumerState<_WorkoutDetailBody> createState() => _WorkoutDetailBodyState();
+}
+
+class _WorkoutDetailBodyState extends ConsumerState<_WorkoutDetailBody> {
+  final Map<String, TextEditingController> _repsCtrls = {};
+  final Map<String, TextEditingController> _weightCtrls = {};
+
+  String _keyFor(int workoutExerciseId, int setIndex) => '${workoutExerciseId}_$setIndex';
+
+  Future<void> saveAllEdits() async {
+    for (final entry in _repsCtrls.entries) {
+      final parts = entry.key.split('_');
+      if (parts.length != 2) continue;
+      final weId = int.tryParse(parts[0]);
+      final setIndex = int.tryParse(parts[1]);
+      if (weId == null || setIndex == null) continue;
+      final reps = int.tryParse(entry.value.text);
+      final weight = double.tryParse(_weightCtrls[entry.key]?.text ?? '');
+      await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+            workoutExerciseId: weId,
+            setIndex: setIndex,
+            reps: reps,
+            weight: weight,
+          );
+    }
+  }
 
   Future<void> _showAddExerciseDialog(BuildContext context, WidgetRef ref) async {
     final nameCtrl = TextEditingController();
@@ -183,7 +211,7 @@ class _WorkoutDetailBody extends ConsumerWidget {
     final reps = int.tryParse(repsCtrl.text);
     final weight = double.tryParse(weightCtrl.text);
     final repo = ref.read(workoutRepositoryProvider);
-    final weId = await repo.addExerciseToWorkout(workoutId: workoutId, exerciseName: name);
+    final weId = await repo.addExerciseToWorkout(workoutId: widget.workoutId, exerciseName: name);
     if (reps != null || weight != null) {
       await repo.addSet(workoutExerciseId: weId, weight: weight, reps: reps);
     }
@@ -193,7 +221,8 @@ class _WorkoutDetailBody extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final workoutId = widget.workoutId;
     final exercises = ref.watch(workoutExercisesProvider(workoutId));
     final targets = ref.watch(workoutTemplateTargetsProvider(workoutId));
     return exercises.when(
@@ -233,7 +262,6 @@ class _WorkoutDetailBody extends ConsumerWidget {
                             final tMap = targets.maybeWhen(data: (m) => m, orElse: () => const {});
                             final tpl = tMap[ex.name];
                             final restSec = tpl?.restSeconds ?? 90;
-                            // Fallback simple rest per set: create a local key per exercise using ValueKey
                             return _RestButton(restSeconds: restSec, key: ValueKey('rest-${we.id}'));
                           }),
                         ],
@@ -261,8 +289,9 @@ class _WorkoutDetailBody extends ConsumerWidget {
                             final rows = <Widget>[];
                             for (int i = 1; i <= (maxRows == 0 ? 1 : maxRows); i++) {
                               final existing = ss.where((s) => s.setIndex == i).toList();
-                              final TextEditingController repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
-                              final TextEditingController weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toString() : '');
+                              final k = _keyFor(we.id, i);
+                              final repsCtrl = _repsCtrls.putIfAbsent(k, () => TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : ''));
+                              final weightCtrl = _weightCtrls.putIfAbsent(k, () => TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toString() : ''));
                               Future<void> saveRow() async {
                                 final reps = int.tryParse(repsCtrl.text);
                                 final weight = double.tryParse(weightCtrl.text);
