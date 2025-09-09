@@ -30,8 +30,9 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
   late final TextEditingController _fats;
   bool _busy = false;
   String _units = 'metric';
-  bool _unitsHydrated = false;
-  bool _fieldsHydrated = false;
+  bool _loading = true;
+  String? _loadError;
+  ProfileGoals? _pg;
   bool _backupBusy = false;
 
   @override
@@ -45,6 +46,7 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
     _protein = TextEditingController();
     _carbs = TextEditingController();
     _fats = TextEditingController();
+    _load();
   }
 
   @override
@@ -151,6 +153,8 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       } else {
+        // If we're not navigating away (e.g., Configure tab), reload from DB now
+        await _load();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
       }
     } finally {
@@ -229,6 +233,40 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
     }
   }
 
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final repo = ref.read(settingsRepositoryProvider);
+      final units = await repo.getUnits();
+      final pg = await repo.load();
+      if (!mounted) return;
+      setState(() {
+        _units = units;
+        _pg = pg;
+        _age.text = (pg.ageYears ?? '').toString();
+        _sex = (pg.gender == 'Female') ? 'Female' : 'Male';
+        _activity = _canonActivity(pg.activityLevel);
+        _calMin.text = (pg.caloriesMin ?? '').toString();
+        _calMax.text = (pg.caloriesMax ?? '').toString();
+        _protein.text = (pg.proteinG ?? '').toString();
+        _carbs.text = (pg.carbsG ?? '').toString();
+        _fats.text = (pg.fatsG ?? '').toString();
+        _height.text = _units == 'metric' ? (pg.heightCm ?? '').toString() : _cmToInText(pg.heightCm);
+        _weight.text = _units == 'metric' ? (pg.weightKg ?? '').toString() : _kgToLbText(pg.weightKg);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = '$e';
+        _loading = false;
+      });
+    }
+  }
+
   Future<void> _importBackup() async {
     if (_backupBusy) return;
     setState(() => _backupBusy = true);
@@ -282,176 +320,152 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pgAsync = ref.watch(profileGoalsProvider);
-    final unitsAsync = ref.watch(unitsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Profile & Goals')),
-      body: unitsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (units) {
-          if (!_unitsHydrated) {
-            _units = units;
-            _unitsHydrated = true;
-          }
-          return pgAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (pg) {
-              if (!_fieldsHydrated) {
-                _age.text = (pg.ageYears ?? '').toString();
-                _sex = (pg.gender == 'Female') ? 'Female' : 'Male';
-                _activity = _canonActivity(pg.activityLevel);
-                _calMin.text = (pg.caloriesMin ?? '').toString();
-                _calMax.text = (pg.caloriesMax ?? '').toString();
-                _protein.text = (pg.proteinG ?? '').toString();
-                _carbs.text = (pg.carbsG ?? '').toString();
-                _fats.text = (pg.fatsG ?? '').toString();
-                // Convert display values to selected units
-                _height.text = _units == 'metric' ? (pg.heightCm ?? '').toString() : _cmToInText(pg.heightCm);
-                _weight.text = _units == 'metric' ? (pg.weightKg ?? '').toString() : _kgToLbText(pg.weightKg);
-                _fieldsHydrated = true;
-              }
-
-              return Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
-                      children: [
-                        const Text('Units:'),
-                        const SizedBox(width: 12),
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment<String>(value: 'metric', label: Text('Metric')),
-                            ButtonSegment<String>(value: 'imperial', label: Text('Imperial')),
-                          ],
-                          selected: {_units},
-                          onSelectionChanged: (set) async {
-                            final v = set.first;
-                            setState(() => _units = v);
-                            await ref.read(settingsRepositoryProvider).setUnits(v);
-                            // Re-convert current values for display
-                            setState(() {
-                              _height.text = _units == 'metric' ? (pg.heightCm ?? '').toString() : _cmToInText(pg.heightCm);
-                              _weight.text = _units == 'metric' ? (pg.weightKg ?? '').toString() : _kgToLbText(pg.weightKg);
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Age (years)'),
-                      keyboardType: TextInputType.number,
-                      controller: _age,
-                      validator: (v) {
-                        final n = int.tryParse(v ?? '');
-                        if (n == null || n <= 0 || n > 120) return 'Enter valid age';
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      decoration: InputDecoration(labelText: _units == 'metric' ? 'Height (cm)' : 'Height (in)'),
-                      keyboardType: TextInputType.number,
-                      controller: _height,
-                      validator: (v) {
-                        final n = double.tryParse(v ?? '');
-                        if (n == null || n <= 0) return 'Enter valid height';
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      decoration: InputDecoration(labelText: _units == 'metric' ? 'Weight (kg)' : 'Weight (lb)'),
-                      keyboardType: TextInputType.number,
-                      controller: _weight,
-                      validator: (v) {
-                        final n = double.tryParse(v ?? '');
-                        if (n == null || n <= 0) return 'Enter valid weight';
-                        return null;
-                      },
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _sex,
-                      decoration: const InputDecoration(labelText: 'Sex'),
-                      items: const [
-                        DropdownMenuItem(value: 'Male', child: Text('Male')),
-                        DropdownMenuItem(value: 'Female', child: Text('Female')),
-                      ],
-                      onChanged: (v) => setState(() => _sex = v ?? 'Male'),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _activity,
-                      decoration: const InputDecoration(labelText: 'Activity Level', helperText: 'Sedentary: little/no exercise • Lightly: 1-3 days/wk • Active: 3-5 days/wk • Very Active: 6-7 days/wk'),
-                      items: const [
-                        DropdownMenuItem(value: 'Sedentary', child: Text('Sedentary (little/no exercise)')),
-                        DropdownMenuItem(value: 'Lightly Active', child: Text('Lightly Active (1–3 days/week)')),
-                        DropdownMenuItem(value: 'Active', child: Text('Active (3–5 days/week)')),
-                        DropdownMenuItem(value: 'Very Active', child: Text('Very Active (6–7 days/week)')),
-                      ],
-                      onChanged: (v) => setState(() => _activity = _canonActivity(v)),
-                    ),
-                    const Divider(),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Calories Min'),
-                      keyboardType: TextInputType.number,
-                      controller: _calMin,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Calories Max'),
-                      keyboardType: TextInputType.number,
-                      controller: _calMax,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Protein (g)'),
-                      keyboardType: TextInputType.number,
-                      controller: _protein,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Carbs (g)'),
-                      keyboardType: TextInputType.number,
-                      controller: _carbs,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Fats (g)'),
-                      keyboardType: TextInputType.number,
-                      controller: _fats,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving...' : 'Save')),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: _busy ? null : _resetOnboarding,
-                      child: const Text('Reset and Restart Onboarding'),
-                    ),
-                    const Divider(height: 32),
-                    Text('Backup & Restore', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _backupBusy ? null : _exportBackup,
-                          icon: const Icon(Icons.archive),
-                          label: Text(_backupBusy ? 'Preparing…' : 'Back up to file'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _backupBusy ? null : _importBackup,
-                          icon: const Icon(Icons.unarchive),
-                          label: const Text('Restore from file'),
-                        ),
-                      ),
-                    ]),
-                  ],
+      body: () {
+        if (_loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (_loadError != null) {
+          return Center(child: Text('Error: $_loadError'));
+        }
+        final pg = _pg;
+        return Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Row(
+                children: [
+                  const Text('Units:'),
+                  const SizedBox(width: 12),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment<String>(value: 'metric', label: Text('Metric')),
+                      ButtonSegment<String>(value: 'imperial', label: Text('Imperial')),
+                    ],
+                    selected: {_units},
+                    onSelectionChanged: (set) async {
+                      final v = set.first;
+                      setState(() => _units = v);
+                      await ref.read(settingsRepositoryProvider).setUnits(v);
+                      // Re-convert current values for display based on originally loaded pg
+                      setState(() {
+                        _height.text = _units == 'metric' ? (pg?.heightCm ?? '').toString() : _cmToInText(pg?.heightCm);
+                        _weight.text = _units == 'metric' ? (pg?.weightKg ?? '').toString() : _kgToLbText(pg?.weightKg);
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Age (years)'),
+                keyboardType: TextInputType.number,
+                controller: _age,
+                validator: (v) {
+                  final n = int.tryParse(v ?? '');
+                  if (n == null || n <= 0 || n > 120) return 'Enter valid age';
+                  return null;
+                },
+              ),
+              TextFormField(
+                decoration: InputDecoration(labelText: _units == 'metric' ? 'Height (cm)' : 'Height (in)'),
+                keyboardType: TextInputType.number,
+                controller: _height,
+                validator: (v) {
+                  final n = double.tryParse(v ?? '');
+                  if (n == null || n <= 0) return 'Enter valid height';
+                  return null;
+                },
+              ),
+              TextFormField(
+                decoration: InputDecoration(labelText: _units == 'metric' ? 'Weight (kg)' : 'Weight (lb)'),
+                keyboardType: TextInputType.number,
+                controller: _weight,
+                validator: (v) {
+                  final n = double.tryParse(v ?? '');
+                  if (n == null || n <= 0) return 'Enter valid weight';
+                  return null;
+                },
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _sex,
+                decoration: const InputDecoration(labelText: 'Sex'),
+                items: const [
+                  DropdownMenuItem(value: 'Male', child: Text('Male')),
+                  DropdownMenuItem(value: 'Female', child: Text('Female')),
+                ],
+                onChanged: (v) => setState(() => _sex = v ?? 'Male'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _activity,
+                decoration: const InputDecoration(labelText: 'Activity Level', helperText: 'Sedentary: little/no exercise • Lightly: 1-3 days/wk • Active: 3-5 days/wk • Very Active: 6-7 days/wk'),
+                items: const [
+                  DropdownMenuItem(value: 'Sedentary', child: Text('Sedentary (little/no exercise)')),
+                  DropdownMenuItem(value: 'Lightly Active', child: Text('Lightly Active (1–3 days/week)')),
+                  DropdownMenuItem(value: 'Active', child: Text('Active (3–5 days/week)')),
+                  DropdownMenuItem(value: 'Very Active', child: Text('Very Active (6–7 days/week)')),
+                ],
+                onChanged: (v) => setState(() => _activity = _canonActivity(v)),
+              ),
+              const Divider(),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Calories Min'),
+                keyboardType: TextInputType.number,
+                controller: _calMin,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Calories Max'),
+                keyboardType: TextInputType.number,
+                controller: _calMax,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Protein (g)'),
+                keyboardType: TextInputType.number,
+                controller: _protein,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Carbs (g)'),
+                keyboardType: TextInputType.number,
+                controller: _carbs,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Fats (g)'),
+                keyboardType: TextInputType.number,
+                controller: _fats,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving...' : 'Save')),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _busy ? null : _resetOnboarding,
+                child: const Text('Reset and Restart Onboarding'),
+              ),
+              const Divider(height: 32),
+              Text('Backup & Restore', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _backupBusy ? null : _exportBackup,
+                    icon: const Icon(Icons.archive),
+                    label: Text(_backupBusy ? 'Preparing…' : 'Back up to file'),
+                  ),
                 ),
-              );
-            },
-          );
-        },
-      ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _backupBusy ? null : _importBackup,
+                    icon: const Icon(Icons.unarchive),
+                    label: const Text('Restore from file'),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        );
+      }(),
     );
   }
 }
