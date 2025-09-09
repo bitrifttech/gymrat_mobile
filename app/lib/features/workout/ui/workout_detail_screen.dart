@@ -53,8 +53,10 @@ class WorkoutDetailScreen extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.save),
                 tooltip: 'Save changes',
-                onPressed: () {
+                onPressed: () async {
                   FocusScope.of(ctx).unfocus();
+                  await detailKey.currentState?.saveAllEdits();
+                  if (!ctx.mounted) return;
                   ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Changes saved')));
                 },
               ),
