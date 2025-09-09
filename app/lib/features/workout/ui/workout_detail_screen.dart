@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
@@ -35,10 +36,16 @@ class WorkoutDetailScreen extends ConsumerWidget {
               preferredSize: const Size.fromHeight(26),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  finished == null ? 'In progress' : 'Total time: ${_formatElapsed(elapsed!)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                child: finished == null
+                    ? StreamBuilder<DateTime>(
+                        stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+                        builder: (ctx, snap) {
+                          final now = snap.data ?? DateTime.now();
+                          final d = now.difference(started);
+                          return Text('Elapsed: ${_formatElapsed(d)}', style: Theme.of(context).textTheme.bodySmall);
+                        },
+                      )
+                    : Text('Total time: ${_formatElapsed(elapsed!)}', style: Theme.of(context).textTheme.bodySmall),
               ),
             ),
             actions: [
@@ -219,6 +226,14 @@ class _WorkoutDetailBody extends ConsumerWidget {
                           const Icon(Icons.fitness_center),
                           const SizedBox(width: 8),
                           Text(ex.name, style: Theme.of(context).textTheme.titleMedium),
+                          const Spacer(),
+                          Consumer(builder: (ctx, ref, _) {
+                            final tMap = targets.maybeWhen(data: (m) => m, orElse: () => const {});
+                            final tpl = tMap[ex.name];
+                            final restSec = tpl?.restSeconds ?? 90;
+                            // Fallback simple rest per set: create a local key per exercise using ValueKey
+                            return _RestButton(restSeconds: restSec, key: ValueKey('rest-${we.id}'));
+                          }),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -299,6 +314,62 @@ class _WorkoutDetailBody extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _RestButton extends StatefulWidget {
+  const _RestButton({super.key, required this.restSeconds});
+  final int restSeconds;
+  @override
+  State<_RestButton> createState() => _RestButtonState();
+}
+
+class _RestButtonState extends State<_RestButton> {
+  Timer? _timer;
+  int _remaining = 0;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _start() {
+    _timer?.cancel();
+    setState(() => _remaining = widget.restSeconds);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_remaining <= 1) {
+        t.cancel();
+        setState(() => _remaining = 0);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
+        }
+      } else {
+        setState(() => _remaining -= 1);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_remaining > 0)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Text(
+              Duration(seconds: _remaining).toString().split('.').first.padLeft(8, '0'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.timer),
+          label: Text(_remaining > 0 ? 'Restart' : 'Rest'),
+          onPressed: _start,
+        ),
+      ],
     );
   }
 }
