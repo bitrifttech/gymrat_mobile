@@ -35,7 +35,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/launch',
         name: 'launch',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: LaunchScreen());
+          return NoTransitionPage(key: state.pageKey, child: const LaunchScreen());
         },
       ),
       // Bottom Navigation Shell
@@ -46,35 +46,35 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/',
               name: 'home',
-              pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()),
+              pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/meals/history',
               name: 'meals.history',
-              pageBuilder: (context, state) => const NoTransitionPage(child: MealHistoryScreen()),
+              pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const MealHistoryScreen()),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/workout/history',
               name: 'workout.history',
-              pageBuilder: (context, state) => const NoTransitionPage(child: WorkoutHistoryScreen()),
+              pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const WorkoutHistoryScreen()),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/metrics',
               name: 'metrics',
-              pageBuilder: (context, state) => const NoTransitionPage(child: MetricsScreen()),
+              pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const MetricsScreen()),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/configure',
               name: 'configure',
-              pageBuilder: (context, state) => const NoTransitionPage(child: ConfigureScreen()),
+              pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ConfigureScreen()),
             ),
           ]),
         ],
@@ -84,35 +84,35 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'workout.summary',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final id = int.parse(state.pathParameters['id']!);
-          return NoTransitionPage(child: WorkoutSummaryScreen(workoutId: id));
+          return NoTransitionPage(key: state.pageKey, child: WorkoutSummaryScreen(workoutId: id));
         },
       ),
       GoRoute(
         path: '/onboarding',
         name: 'onboarding',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: OnboardingScreen());
+          return NoTransitionPage(key: state.pageKey, child: const OnboardingScreen());
         },
       ),
       GoRoute(
         path: '/settings/edit',
         name: 'settings.edit',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: EditSettingsScreen());
+          return NoTransitionPage(key: state.pageKey, child: const EditSettingsScreen());
         },
       ),
       GoRoute(
         path: '/food/log',
         name: 'food.log',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: FoodLogScreen());
+          return NoTransitionPage(key: state.pageKey, child: const FoodLogScreen());
         },
       ),
       GoRoute(
         path: '/meals/today',
         name: 'meals.today',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: MealsTodayScreen());
+          return NoTransitionPage(key: state.pageKey, child: const MealsTodayScreen());
         },
       ),
       GoRoute(
@@ -120,7 +120,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'food.scan',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final meal = state.uri.queryParameters['meal'];
-          return NoTransitionPage(child: ScanFoodScreen(initialMealType: meal));
+          return NoTransitionPage(key: state.pageKey, child: ScanFoodScreen(initialMealType: meal));
         },
       ),
       GoRoute(
@@ -128,7 +128,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'food.search',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final meal = state.uri.queryParameters['meal'];
-          return NoTransitionPage(child: FoodSearchScreen(initialMealType: meal));
+          return NoTransitionPage(key: state.pageKey, child: FoodSearchScreen(initialMealType: meal));
         },
       ),
       GoRoute(
@@ -136,7 +136,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'workout.detail',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final id = int.parse(state.pathParameters['id']!);
-          return NoTransitionPage(child: WorkoutDetailScreen(workoutId: id));
+          return NoTransitionPage(key: state.pageKey, child: WorkoutDetailScreen(workoutId: id));
         },
       ),
       GoRoute(
@@ -151,21 +151,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           } else if (extra is int) {
             initialId = extra;
           }
-          return NoTransitionPage(child: TemplatesScreen(initialTemplateId: initialId));
+          return NoTransitionPage(key: state.pageKey, child: TemplatesScreen(initialTemplateId: initialId));
         },
       ),
       GoRoute(
         path: '/workout/schedule',
         name: 'workout.schedule',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: ScheduleScreen());
+          return NoTransitionPage(key: state.pageKey, child: const ScheduleScreen());
         },
       ),
       GoRoute(
         path: '/task/add',
         name: 'task.add',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return const NoTransitionPage(child: _StubScreen('Add Task (stub)'));
+          return NoTransitionPage(key: state.pageKey, child: const _StubScreen('Add Task (stub)'));
         },
       ),
     ],
