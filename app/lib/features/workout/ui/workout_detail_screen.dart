@@ -105,6 +105,8 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           FocusScope.of(ctx).unfocus();
+                          // Give TextFields a moment to trigger onEditingComplete saves
+                          await Future.delayed(const Duration(milliseconds: 150));
                           await repo.finishWorkout(w.id);
                           if (!ctx.mounted) return;
                           context.push('/workout/summary/${w.id}');
