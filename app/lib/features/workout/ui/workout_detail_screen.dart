@@ -246,6 +246,17 @@ class _WorkoutDetailBody extends ConsumerWidget {
                               final existing = ss.where((s) => s.setIndex == i).toList();
                               final TextEditingController repsCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.reps != null ? existing.first.reps!.toString() : '');
                               final TextEditingController weightCtrl = TextEditingController(text: existing.isNotEmpty && existing.first.weight != null ? existing.first.weight!.toStringAsFixed(0) : '');
+                              Future<void> saveRow() async {
+                                final reps = int.tryParse(repsCtrl.text);
+                                final weightInt = int.tryParse(weightCtrl.text);
+                                final weight = weightInt?.toDouble();
+                                await ref.read(workoutRepositoryProvider).upsertSetByIndex(
+                                      workoutExerciseId: we.id,
+                                      setIndex: i,
+                                      reps: reps,
+                                      weight: weight,
+                                    );
+                              }
                               rows.add(Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 6.0),
                                 child: Row(
@@ -258,17 +269,8 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                         keyboardType: TextInputType.number,
                                         decoration: InputDecoration(labelText: repsLabel.isEmpty ? 'Reps' : 'Reps ($repsLabel)'),
                                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                        onChanged: (_) async {
-                                          final reps = int.tryParse(repsCtrl.text);
-                                          final weightInt = int.tryParse(weightCtrl.text);
-                                          final weight = weightInt?.toDouble();
-                                          await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                workoutExerciseId: we.id,
-                                                setIndex: i,
-                                                reps: reps,
-                                                weight: weight,
-                                              );
-                                        },
+                                        onEditingComplete: () async { await saveRow(); },
+                                        onSubmitted: (_) async { await saveRow(); },
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -278,17 +280,8 @@ class _WorkoutDetailBody extends ConsumerWidget {
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                         decoration: const InputDecoration(labelText: 'Weight'),
-                                        onChanged: (_) async {
-                                          final reps = int.tryParse(repsCtrl.text);
-                                          final weightInt = int.tryParse(weightCtrl.text);
-                                          final weight = weightInt?.toDouble();
-                                          await ref.read(workoutRepositoryProvider).upsertSetByIndex(
-                                                workoutExerciseId: we.id,
-                                                setIndex: i,
-                                                reps: reps,
-                                                weight: weight,
-                                              );
-                                        },
+                                        onEditingComplete: () async { await saveRow(); },
+                                        onSubmitted: (_) async { await saveRow(); },
                                       ),
                                     ),
                                   ],
