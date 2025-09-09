@@ -351,6 +351,15 @@ class _RestButtonState extends State<_RestButton> {
     });
   }
 
+  void _toggle() {
+    if (_remaining > 0) {
+      _timer?.cancel();
+      setState(() => _remaining = 0);
+    } else {
+      _start();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -366,8 +375,8 @@ class _RestButtonState extends State<_RestButton> {
           ),
         OutlinedButton.icon(
           icon: const Icon(Icons.timer),
-          label: Text(_remaining > 0 ? 'Restart' : 'Rest'),
-          onPressed: _start,
+          label: Text(_remaining > 0 ? 'Stop' : 'Rest'),
+          onPressed: _toggle,
         ),
       ],
     );
