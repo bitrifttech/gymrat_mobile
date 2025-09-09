@@ -9,14 +9,14 @@ class HomeRepository {
 
   Future<Goal?> readLatestGoal() async {
     final query = (_db.select(_db.goals)
-      ..orderBy([(g) => OrderingTerm.desc(g.createdAt)])
+      ..orderBy([(g) => OrderingTerm.desc(g.id)])
       ..limit(1));
     return query.getSingleOrNull();
   }
 
   Stream<Goal?> watchLatestGoal() {
     final query = (_db.select(_db.goals)
-      ..orderBy([(g) => OrderingTerm.desc(g.createdAt)])
+      ..orderBy([(g) => OrderingTerm.desc(g.id)])
       ..limit(1));
     return query.watchSingleOrNull();
   }

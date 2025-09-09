@@ -58,7 +58,7 @@ class SettingsRepository {
   Future<void> save(ProfileGoals pg) async {
     await _db.transaction(() async {
       final user = await (_db.select(_db.users)
-            ..orderBy([(u) => OrderingTerm.desc(u.createdAt)])
+            ..orderBy([(u) => OrderingTerm.desc(u.id)])
             ..limit(1))
           .getSingleOrNull();
       if (user == null) {
