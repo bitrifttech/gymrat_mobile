@@ -62,6 +62,32 @@ class _EditSettingsScreenState extends ConsumerState<EditSettingsScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate that macro calories don't exceed calorie goal
+    final maxKcalVal = int.tryParse(_calMax.text);
+    final proteinVal = int.tryParse(_protein.text) ?? 0;
+    final carbsVal = int.tryParse(_carbs.text) ?? 0;
+    final fatsVal = int.tryParse(_fats.text) ?? 0;
+    if (maxKcalVal != null) {
+      final macroKcal = proteinVal * 4 + carbsVal * 4 + fatsVal * 9;
+      if (macroKcal > maxKcalVal) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Macros exceed calorie goal'),
+            content: Text(
+              'Your protein, carbs, and fats total ${macroKcal.toString()} kcal, which exceeds your calorie goal of ${maxKcalVal.toString()} kcal.\n\n'
+              'Reduce carbs/fats or increase your calorie goal to continue.'
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _busy = true);
     try {
       // Convert to metric for storage if needed
