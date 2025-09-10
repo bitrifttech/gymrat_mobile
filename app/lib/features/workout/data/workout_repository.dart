@@ -405,6 +405,60 @@ class WorkoutRepository {
     return startWorkoutFromTemplate(sched.templateId);
   }
 
+  Future<List<(DateTime, WorkoutTemplate)>> readMissedScheduledWorkouts({int daysBack = 14}) async {
+    final userId = await _getCurrentUserId();
+    final today = _dateOnly(DateTime.now());
+    final start = today.subtract(Duration(days: daysBack));
+    final result = <(DateTime, WorkoutTemplate)>[];
+    // Build a map for quick template lookup
+    final templates = await (_db.select(_db.workoutTemplates)..where((t) => t.userId.equals(userId))).get();
+    final tplById = {for (final t in templates) t.id: t};
+    for (DateTime d = start; d.isBefore(today); d = d.add(const Duration(days: 1))) {
+      final dow = d.weekday;
+      final sched = await (_db.select(_db.workoutSchedule)
+            ..where((s) => s.userId.equals(userId) & s.dayOfWeek.equals(dow))
+            ..limit(1))
+          .getSingleOrNull();
+      if (sched == null) continue;
+      // Any finished workout on that day?
+      final next = d.add(const Duration(days: 1));
+      final done = await (_db.select(_db.workouts)
+            ..where((w) => w.userId.equals(userId) & w.startedAt.isBiggerOrEqualValue(d) & w.startedAt.isSmallerThanValue(next) & w.finishedAt.isNotNull())
+            ..limit(1))
+          .getSingleOrNull();
+      if (done != null) continue;
+      final tpl = tplById[sched.templateId];
+      if (tpl != null) result.add((d, tpl));
+    }
+    // Sort descending by date (most recent missed first)
+    result.sort((a, b) => b.$1.compareTo(a.$1));
+    return result;
+  }
+
+  Future<int> startWorkoutFromTemplateOnDate({required int templateId, required DateTime date}) async {
+    // Create workout seeded from template, but adjust startedAt to the target day
+    final template = await (_db.select(_db.workoutTemplates)..where((t) => t.id.equals(templateId))).getSingleOrNull();
+    if (template == null) throw StateError('Template not found');
+    final name = template.name;
+    final startedAt = DateTime(date.year, date.month, date.day, 12, 0); // midday to avoid boundary issues
+    final userId = await _getCurrentUserId();
+    final workoutId = await _db.into(_db.workouts).insert(WorkoutsCompanion.insert(
+          userId: userId,
+          name: Value(name),
+          sourceTemplateId: Value(templateId),
+          startedAt: Value(startedAt),
+        ));
+    // Seed exercises from template
+    final te = await (_db.select(_db.templateExercises)
+          ..where((e) => e.templateId.equals(templateId))
+          ..orderBy([(e) => OrderingTerm.asc(e.orderIndex)])).
+        get();
+    for (final e in te) {
+      await addExerciseToWorkout(workoutId: workoutId, exerciseName: e.exerciseName);
+    }
+    return workoutId;
+  }
+
   Future<int> restartWorkoutFrom(int oldWorkoutId) async {
     final old = await (_db.select(_db.workouts)..where((w) => w.id.equals(oldWorkoutId))).getSingle();
     final newWorkoutId = await startWorkout(name: old.name, sourceTemplateId: old.sourceTemplateId);

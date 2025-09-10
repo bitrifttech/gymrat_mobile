@@ -268,9 +268,24 @@ class HomeScreen extends ConsumerWidget {
                         error: (e, st) => const SizedBox.shrink(),
                         data: (tpl) {
                           if (tpl == null) {
-                            return const ListTile(
-                              leading: Icon(Icons.event_busy),
-                              title: Text('No workout scheduled'),
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const ListTile(
+                                  leading: Icon(Icons.event_busy),
+                                  title: Text('No workout scheduled'),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.replay),
+                                    label: const Text('Make up missed workout'),
+                                    onPressed: () async {
+                                      await _showMakeUpWorkoutSheet(context, ref, selectedDate);
+                                    },
+                                  ),
+                                ),
+                              ],
                             );
                           }
                           return ListTile(
@@ -303,3 +318,56 @@ class HomeScreen extends ConsumerWidget {
 }
 
 final _selectedDateProvider = StateProvider<DateTime?>((ref) => null);
+
+Future<void> _showMakeUpWorkoutSheet(BuildContext context, WidgetRef ref, DateTime selectedDate) async {
+  final missed = await ref.read(workoutRepositoryProvider).readMissedScheduledWorkouts(daysBack: 14);
+  final templates = await ref.read(workoutRepositoryProvider).watchTemplates().first;
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) {
+      return SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(8),
+          children: [
+            const ListTile(
+              leading: Icon(Icons.history),
+              title: Text('Missed workouts (last 14 days)'),
+            ),
+            if (missed.isEmpty)
+              const ListTile(title: Text('No missed workouts found'))
+            else ...[
+              for (final (date, tpl) in missed)
+                ListTile(
+                  leading: const Icon(Icons.replay),
+                  title: Text('${date.month}/${date.day}/${date.year} — ${tpl.name}'),
+                  onTap: () async {
+                    final wkId = await ref.read(workoutRepositoryProvider).startWorkoutFromTemplateOnDate(templateId: tpl.id, date: selectedDate);
+                    if (!ctx.mounted) return;
+                    Navigator.of(ctx).pop();
+                    context.push('/workout/detail/$wkId');
+                  },
+                ),
+            ],
+            const Divider(),
+            const ListTile(
+              leading: Icon(Icons.fitness_center),
+              title: Text('Choose any workout template'),
+            ),
+            for (final tpl in templates)
+              ListTile(
+                leading: const Icon(Icons.article),
+                title: Text(tpl.name),
+                onTap: () async {
+                  final wkId = await ref.read(workoutRepositoryProvider).startWorkoutFromTemplateOnDate(templateId: tpl.id, date: selectedDate);
+                  if (!ctx.mounted) return;
+                  Navigator.of(ctx).pop();
+                  context.push('/workout/detail/$wkId');
+                },
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
