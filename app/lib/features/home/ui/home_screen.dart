@@ -6,12 +6,43 @@ import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/router/route_observer.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Refresh date-scoped data when returning to dashboard
+    final now = DateTime.now();
+    final selectedDate = ref.read(_selectedDateProvider) ?? DateTime(now.year, now.month, now.day);
+    ref.invalidate(scheduledTemplateOnDateProvider(selectedDate));
+    ref.invalidate(workoutAnyOnDateProvider(selectedDate));
+    ref.invalidate(totalsForDateProvider(selectedDate));
+    ref.invalidate(mealsForDateProvider(selectedDate));
+    ref.invalidate(totalsForDateProvider(selectedDate));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final latestGoal = ref.watch(latestGoalProvider);
     final now = DateTime.now();
     final selectedDateState = ref.watch(_selectedDateProvider);

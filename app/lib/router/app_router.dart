@@ -17,6 +17,7 @@ import 'package:app/features/workout/ui/workout_summary_screen.dart';
 import 'package:app/features/food/ui/meal_history_screen.dart';
 import 'package:app/features/food/ui/meals_at_date_screen.dart';
 import 'package:app/shell/bottom_nav_shell.dart';
+import 'route_observer.dart';
 
 class _StubScreen extends StatelessWidget {
   const _StubScreen(this.title);
@@ -31,6 +32,7 @@ class _StubScreen extends StatelessWidget {
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/launch',
+    observers: [routeObserver],
     routes: <RouteBase>[
       GoRoute(
         path: '/launch',
