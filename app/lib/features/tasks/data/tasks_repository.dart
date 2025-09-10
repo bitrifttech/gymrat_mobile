@@ -99,6 +99,13 @@ class TasksRepository {
     return watchTasksForDay(today);
   }
 
+  Stream<Set<int>> watchCompletedTaskIdsForSpecificDate(DateTime date) {
+    final d = _dateOnly(date);
+    return (_db.select(_db.taskLog)..where((tl) => tl.date.equals(d) & tl.completedAt.isNotNull()))
+        .watch()
+        .map((rows) => rows.map((r) => r.taskId).toSet());
+  }
+
   // Completion
   Future<void> markTaskDoneForDate({required int taskId, required DateTime date}) async {
     final userId = await _getCurrentUserId();
@@ -193,6 +200,10 @@ final taskAssignmentsProvider = StreamProvider<Map<int, Set<int>>>((ref) {
 
 final completedTodayProvider = StreamProvider<Set<int>>((ref) {
   return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForDate(DateTime.now());
+});
+
+final completedOnDateProvider = StreamProvider.family<Set<int>, DateTime>((ref, date) {
+  return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForSpecificDate(date);
 });
 
 class DailyHabitCompletion {

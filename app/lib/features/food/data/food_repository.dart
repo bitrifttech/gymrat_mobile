@@ -166,6 +166,17 @@ class FoodRepository {
     await addExistingFoodToSpecificMeal(mealId: mealId, foodId: foodId, quantity: quantity, unit: unit);
   }
 
+  Future<void> addExistingFoodToMealOnDate({
+    required DateTime date,
+    required int foodId,
+    required String mealType,
+    double quantity = 1.0,
+    String? unit,
+  }) async {
+    final mealId = await _ensureMealFor(date, mealType);
+    await addExistingFoodToSpecificMeal(mealId: mealId, foodId: foodId, quantity: quantity, unit: unit);
+  }
+
   Future<void> addExistingFoodToSpecificMeal({
     required int mealId,
     required int foodId,

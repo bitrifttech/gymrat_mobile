@@ -4,8 +4,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:app/features/food/data/food_repository.dart';
 
 class ScanFoodScreen extends ConsumerStatefulWidget {
-  const ScanFoodScreen({super.key, this.initialMealType});
+  const ScanFoodScreen({super.key, this.initialMealType, this.initialDate});
   final String? initialMealType;
+  final DateTime? initialDate;
   @override
   ConsumerState<ScanFoodScreen> createState() => _ScanFoodScreenState();
 }
@@ -13,6 +14,7 @@ class ScanFoodScreen extends ConsumerStatefulWidget {
 class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
   bool _handled = false;
   String _mealType = 'breakfast';
+  late DateTime _date;
 
   @override
   void initState() {
@@ -20,6 +22,10 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
     if (widget.initialMealType != null && widget.initialMealType!.isNotEmpty) {
       _mealType = widget.initialMealType!;
     }
+    final now = DateTime.now();
+    _date = widget.initialDate == null
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(widget.initialDate!.year, widget.initialDate!.month, widget.initialDate!.day);
   }
 
   Future<void> _promptAdd(int foodId) async {
@@ -114,7 +120,7 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
     );
     if (result == null) return;
     final (qty, unit, meal) = result;
-    await ref.read(foodRepositoryProvider).addExistingFoodToMeal(foodId: foodId, mealType: meal, quantity: qty, unit: unit);
+    await ref.read(foodRepositoryProvider).addExistingFoodToMealOnDate(date: _date, foodId: foodId, mealType: meal, quantity: qty, unit: unit);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
     Navigator.of(context).pop();

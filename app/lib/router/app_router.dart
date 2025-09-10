@@ -15,6 +15,7 @@ import 'package:app/features/workout/ui/workout_detail_screen.dart';
 import 'package:app/features/metrics/ui/metrics_screen.dart';
 import 'package:app/features/workout/ui/workout_summary_screen.dart';
 import 'package:app/features/food/ui/meal_history_screen.dart';
+import 'package:app/features/food/ui/meals_at_date_screen.dart';
 import 'package:app/shell/bottom_nav_shell.dart';
 
 class _StubScreen extends StatelessWidget {
@@ -105,7 +106,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/food/log',
         name: 'food.log',
         pageBuilder: (BuildContext context, GoRouterState state) {
-          return NoTransitionPage(key: state.pageKey, child: const FoodLogScreen());
+          final ds = state.uri.queryParameters['date'];
+          DateTime? date;
+          if (ds != null && ds.isNotEmpty) {
+            try {
+              final parts = ds.split('-');
+              if (parts.length == 3) {
+                date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+              }
+            } catch (_) {}
+          }
+          return NoTransitionPage(key: state.pageKey, child: FoodLogScreen(date: date));
         },
       ),
       GoRoute(
@@ -116,11 +127,36 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/meals/by-date',
+        name: 'meals.byDate',
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          final ds = state.uri.queryParameters['date']; // yyyy-MM-dd
+          DateTime date = DateTime.now();
+          if (ds != null && ds.isNotEmpty) {
+            try {
+              final parts = ds.split('-');
+              if (parts.length == 3) {
+                date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+              }
+            } catch (_) {}
+          }
+          return NoTransitionPage(key: state.pageKey, child: MealsAtDateScreen(date: date));
+        },
+      ),
+      GoRoute(
         path: '/food/scan',
         name: 'food.scan',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final meal = state.uri.queryParameters['meal'];
-          return NoTransitionPage(key: state.pageKey, child: ScanFoodScreen(initialMealType: meal));
+          final ds = state.uri.queryParameters['date'];
+          DateTime? date;
+          if (ds != null && ds.isNotEmpty) {
+            try {
+              final p = ds.split('-');
+              if (p.length == 3) date = DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+            } catch (_) {}
+          }
+          return NoTransitionPage(key: state.pageKey, child: ScanFoodScreen(initialMealType: meal, initialDate: date));
         },
       ),
       GoRoute(
@@ -128,7 +164,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'food.search',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final meal = state.uri.queryParameters['meal'];
-          return NoTransitionPage(key: state.pageKey, child: FoodSearchScreen(initialMealType: meal));
+          final ds = state.uri.queryParameters['date'];
+          DateTime? date;
+          if (ds != null && ds.isNotEmpty) {
+            try {
+              final p = ds.split('-');
+              if (p.length == 3) date = DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+            } catch (_) {}
+          }
+          return NoTransitionPage(key: state.pageKey, child: FoodSearchScreen(initialMealType: meal, initialDate: date));
         },
       ),
       GoRoute(

@@ -4,7 +4,8 @@ import 'package:app/features/food/data/food_repository.dart';
 import 'package:go_router/go_router.dart';
 
 class FoodLogScreen extends ConsumerStatefulWidget {
-  const FoodLogScreen({super.key});
+  const FoodLogScreen({super.key, this.date});
+  final DateTime? date;
 
   @override
   ConsumerState<FoodLogScreen> createState() => _FoodLogScreenState();
@@ -12,6 +13,16 @@ class FoodLogScreen extends ConsumerStatefulWidget {
 
 class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
   String _mealType = 'breakfast';
+  late DateTime _date;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _date = widget.date == null
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(widget.date!.year, widget.date!.month, widget.date!.day);
+  }
 
   @override
   void dispose() {
@@ -134,7 +145,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     );
     if (result == null) return;
     final (qty, unit) = result;
-    await repo.addExistingFoodToMeal(foodId: foodId, mealType: _mealType, quantity: qty, unit: unit);
+    await repo.addExistingFoodToMealOnDate(date: _date, foodId: foodId, mealType: _mealType, quantity: qty, unit: unit);
     if (!mounted) return;
     messenger.showSnackBar(const SnackBar(content: Text('Food added')));
   }
@@ -189,11 +200,11 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final meals = ref.watch(todaysMealsProvider);
+    final meals = ref.watch(mealsForDateProvider(_date));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log Food'),
+        title: Text('Log Food — ${_date.month}/${_date.day}/${_date.year}'),
       ),
       body: Column(
         children: [
@@ -461,10 +472,12 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     );
     if (action == 'search') {
       if (!mounted) return;
-      context.push('/food/search?meal='+_mealType);
+      final ds = '${_date.year.toString().padLeft(4,'0')}-${_date.month.toString().padLeft(2,'0')}-${_date.day.toString().padLeft(2,'0')}';
+      context.push('/food/search?meal='+_mealType+'&date='+ds);
     } else if (action == 'scan') {
       if (!mounted) return;
-      context.push('/food/scan?meal='+_mealType);
+      final ds = '${_date.year.toString().padLeft(4,'0')}-${_date.month.toString().padLeft(2,'0')}-${_date.day.toString().padLeft(2,'0')}';
+      context.push('/food/scan?meal='+_mealType+'&date='+ds);
     }
   }
   String _prettyMeal(String t) {

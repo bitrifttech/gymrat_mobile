@@ -446,6 +446,16 @@ class WorkoutRepository {
     return q.watchSingleOrNull();
   }
 
+  Stream<Workout?> watchWorkoutAnyStatusForDate(DateTime date) {
+    final day = _dateOnly(date);
+    final tomorrow = day.add(const Duration(days: 1));
+    final q = (_db.select(_db.workouts)
+      ..where((w) => w.startedAt.isBiggerOrEqualValue(day) & w.startedAt.isSmallerThanValue(tomorrow))
+      ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
+      ..limit(1));
+    return q.watchSingleOrNull();
+  }
+
   Future<void> reopenWorkout(int workoutId) async {
     await (_db.update(_db.workouts)..where((w) => w.id.equals(workoutId))).write(
       const WorkoutsCompanion(finishedAt: Value(null)),
@@ -708,6 +718,10 @@ final scheduledTemplateTodayProvider = StreamProvider<WorkoutTemplate?>((ref) {
   return ref.read(workoutRepositoryProvider).watchScheduledTemplateForDate(DateTime.now());
 });
 
+final scheduledTemplateOnDateProvider = StreamProvider.family<WorkoutTemplate?, DateTime>((ref, date) {
+  return ref.read(workoutRepositoryProvider).watchScheduledTemplateForDate(date);
+});
+
 final scheduleProvider = StreamProvider<List<WorkoutScheduleData>>((ref) {
   return ref.read(workoutRepositoryProvider).watchSchedule();
 });
@@ -722,6 +736,10 @@ final todaysScheduledWorkoutCompletedProvider = StreamProvider<bool>((ref) {
 
 final todaysWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
   return ref.read(workoutRepositoryProvider).watchTodaysWorkoutAnyStatus();
+});
+
+final workoutAnyOnDateProvider = StreamProvider.family<Workout?, DateTime>((ref, date) {
+  return ref.read(workoutRepositoryProvider).watchWorkoutAnyStatusForDate(date);
 });
 
 final todaysScheduledWorkoutAnyProvider = StreamProvider<Workout?>((ref) {

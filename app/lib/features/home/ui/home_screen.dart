@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/home/data/home_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'widgets/macro_ring.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,16 +13,63 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final latestGoal = ref.watch(latestGoalProvider);
-    final todayTotals = ref.watch(todayTotalsProvider);
-    final scheduledTemplate = ref.watch(scheduledTemplateTodayProvider);
-    final activeWorkout = ref.watch(activeWorkoutProvider);
+    final now = DateTime.now();
+    final selectedDateState = ref.watch(_selectedDateProvider);
+    final selectedDate = selectedDateState ?? DateTime(now.year, now.month, now.day);
+    // Show totals for the selected date
+    final totalsForSelected = ref.watch(totalsForDateProvider(selectedDate));
+    // Date-scoped workout/task providers
+    final scheduledTemplate = ref.watch(scheduledTemplateOnDateProvider(selectedDate));
+    final todaysWorkoutAny = ref.watch(workoutAnyOnDateProvider(selectedDate));
+    // Completion is only meaningful for today; for other days we show latest workout that day if any
     final isCompletedToday = ref.watch(todaysScheduledWorkoutCompletedProvider);
-    final todaysWorkoutAny = ref.watch(todaysWorkoutAnyProvider);
     final todaysScheduledWorkoutAny = ref.watch(todaysScheduledWorkoutAnyProvider);
+    final prevDate = selectedDate.subtract(const Duration(days: 1));
+    final prevMeals = ref.watch(mealsForDateProvider(prevDate));
+    final prevWorkout = ref.watch(workoutAnyOnDateProvider(prevDate));
+    final prevHasEntries = (prevMeals.maybeWhen(data: (list) => list.isNotEmpty, orElse: () => false))
+        || (prevWorkout.maybeWhen(data: (w) => w != null, orElse: () => false));
+    final todayDateOnly = DateTime(now.year, now.month, now.day);
+    final canGoNext = selectedDate.isBefore(todayDateOnly);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GymRat'),
+        title: Row(
+          children: [
+            IconButton(
+              tooltip: 'Previous day',
+              icon: const Icon(Icons.chevron_left),
+              onPressed: prevHasEntries
+                  ? () {
+                      final prev = selectedDate.subtract(const Duration(days: 1));
+                      ref.read(_selectedDateProvider.notifier).state = prev;
+                    }
+                  : null,
+            ),
+            Expanded(
+              child: Center(child: Text('${selectedDate.month}/${selectedDate.day}/${selectedDate.year}')),
+            ),
+            IconButton(
+              tooltip: 'Next day',
+              icon: const Icon(Icons.chevron_right),
+              onPressed: canGoNext
+                  ? () {
+                      final next = selectedDate.add(const Duration(days: 1));
+                      ref.read(_selectedDateProvider.notifier).state = next;
+                    }
+                  : null,
+            ),
+          ],
+        ),
         actions: [
+          TextButton(
+            onPressed: selectedDate.isAtSameMomentAs(todayDateOnly)
+                ? null
+                : () {
+                    ref.read(_selectedDateProvider.notifier).state = todayDateOnly;
+                  },
+            child: const Text('Today'),
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () => context.pushNamed('settings.edit'),
@@ -53,9 +100,9 @@ class HomeScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Today', style: Theme.of(context).textTheme.titleLarge),
+              Text('Overview', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
-              todayTotals.when(
+              totalsForSelected.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, st) => Center(child: Text('Error: $e')),
                 data: (t) {
@@ -80,16 +127,31 @@ class HomeScreen extends ConsumerWidget {
                 runSpacing: 12,
                 alignment: WrapAlignment.center,
                 children: [
-                  ElevatedButton.icon(onPressed: () => context.pushNamed('food.log'), icon: const Icon(Icons.restaurant), label: const Text('Log Food')),
-                  ElevatedButton.icon(onPressed: () => context.pushNamed('meals.today'), icon: const Icon(Icons.fastfood), label: const Text("Today's Meals")),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final ds = '${selectedDate.year.toString().padLeft(4,'0')}-${selectedDate.month.toString().padLeft(2,'0')}-${selectedDate.day.toString().padLeft(2,'0')}';
+                      context.push('/food/log?date='+ds);
+                    },
+                    icon: const Icon(Icons.restaurant),
+                    label: const Text('Log Food'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final ds = '${selectedDate.year.toString().padLeft(4,'0')}-${selectedDate.month.toString().padLeft(2,'0')}-${selectedDate.day.toString().padLeft(2,'0')}';
+                      context.push('/meals/by-date?date='+ds);
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: const Text('Meals'),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
-              Text('Today’s Tasks', style: Theme.of(context).textTheme.titleMedium),
+              Text('Tasks', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Consumer(builder: (context, ref, _) {
-                final tasksToday = ref.watch(tasksForTodayProvider);
-                final completed = ref.watch(completedTodayProvider);
+                final dow = selectedDate.weekday; // 1..7
+                final tasksToday = ref.watch(tasksForDayProvider(dow));
+                final completed = ref.watch(completedOnDateProvider(selectedDate));
                 return tasksToday.when(
                   loading: () => const SizedBox.shrink(),
                   error: (e, st) => const SizedBox.shrink(),
@@ -114,9 +176,9 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                                 onChanged: (v) async {
                                   if (v == true) {
-                                    await ref.read(tasksRepositoryProvider).markTaskDoneForDate(taskId: t.id, date: DateTime.now());
+                                    await ref.read(tasksRepositoryProvider).markTaskDoneForDate(taskId: t.id, date: selectedDate);
                                   } else {
-                                    await ref.read(tasksRepositoryProvider).unmarkTaskDoneForDate(taskId: t.id, date: DateTime.now());
+                                    await ref.read(tasksRepositoryProvider).unmarkTaskDoneForDate(taskId: t.id, date: selectedDate);
                                   }
                                 },
                               ),
@@ -127,11 +189,12 @@ class HomeScreen extends ConsumerWidget {
                   },
                 );
               }),
+              // Workout section reflects selected date; completion chip only for today
               isCompletedToday.when(
                 loading: () => const SizedBox.shrink(),
                 error: (e, st) => const SizedBox.shrink(),
                 data: (completed) {
-                  if (completed) {
+                  if (selectedDate.isAtSameMomentAs(DateTime(now.year, now.month, now.day)) && completed) {
                     return todaysWorkoutAny.when(
                       loading: () => const SizedBox.shrink(),
                       error: (e, st) => const SizedBox.shrink(),
@@ -175,14 +238,19 @@ class HomeScreen extends ConsumerWidget {
                     );
                   }
 
-                  return activeWorkout.when(
+                  // For other dates, show any workout logged that day, else scheduled template if same day
+                  return todaysWorkoutAny.when(
                     loading: () => const SizedBox.shrink(),
                     error: (e, st) => const SizedBox.shrink(),
                     data: (wk) {
                       if (wk != null) {
+                        final isCompleted = wk.finishedAt != null;
                         return ListTile(
-                          leading: const Icon(Icons.play_circle_fill),
-                          title: Text('Today’s Workout: ${wk.name ?? 'Workout'} (In progress)'),
+                          leading: Icon(
+                            isCompleted ? Icons.check_circle : Icons.play_circle_fill,
+                            color: isCompleted ? Colors.green : null,
+                          ),
+                          title: Text('Workout: ${wk.name ?? 'Workout'}${isCompleted ? ' (Completed)' : ''}'),
                           trailing: Wrap(
                             spacing: 8,
                             children: [
@@ -207,18 +275,20 @@ class HomeScreen extends ConsumerWidget {
                           if (tpl == null) {
                             return const ListTile(
                               leading: Icon(Icons.event_busy),
-                              title: Text('No workout scheduled today'),
+                              title: Text('No workout scheduled'),
                             );
                           }
                           return ListTile(
                             leading: const Icon(Icons.fitness_center),
-                            title: Text('Today’s Workout: ${tpl.name}'),
+                            title: Text('Scheduled Workout: ${tpl.name}'),
                             trailing: ElevatedButton(
-                              onPressed: () async {
-                                final wkId = await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
-                                if (!context.mounted) return;
-                                if (wkId != null) context.push('/workout/detail/$wkId');
-                              },
+                              onPressed: selectedDate.isAtSameMomentAs(DateTime(now.year, now.month, now.day))
+                                  ? () async {
+                                      final wkId = await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
+                                      if (!context.mounted) return;
+                                      if (wkId != null) context.push('/workout/detail/$wkId');
+                                    }
+                                  : null,
                               child: const Text('Start'),
                             ),
                           );
@@ -236,3 +306,5 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+
+final _selectedDateProvider = StateProvider<DateTime?>((ref) => null);
