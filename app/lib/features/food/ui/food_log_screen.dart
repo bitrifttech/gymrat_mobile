@@ -418,20 +418,37 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, st) => Center(child: Text('Error: $e')),
                   data: (foods) {
-                    if (foods.isEmpty) {
-                      return const Center(child: Text('No custom foods yet'));
-                    }
-                    return ListView.builder(
-                      itemCount: foods.length,
-                      itemBuilder: (c, i) {
-                        final f = foods[i];
-                        return ListTile(
-                          title: Text(f.name),
-                          subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
-                          trailing: Text('${f.calories} kcal'),
-                          onTap: () => Navigator.of(ctx).pop(f.id),
-                        );
-                      },
+                    return Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.add),
+                          title: const Text('New custom food'),
+                          onTap: () async {
+                            Navigator.of(ctx).pop();
+                            final newId = await _createCustomFoodDialog();
+                            if (newId != null) {
+                              await _promptAndAddRecent(foodId: newId);
+                            }
+                          },
+                        ),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: foods.isEmpty
+                              ? const Center(child: Text('No custom foods yet'))
+                              : ListView.builder(
+                                  itemCount: foods.length,
+                                  itemBuilder: (c, i) {
+                                    final f = foods[i];
+                                    return ListTile(
+                                      title: Text(f.name),
+                                      subtitle: Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                                      trailing: Text('${f.calories} kcal'),
+                                      onTap: () => Navigator.of(ctx).pop(f.id),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -444,6 +461,81 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     if (foodId != null) {
       await _promptAndAddRecent(foodId: foodId);
     }
+  }
+
+  Future<int?> _createCustomFoodDialog() async {
+    final name = TextEditingController();
+    final brand = TextEditingController();
+    final serving = TextEditingController();
+    final servingQty = TextEditingController();
+    String servingUnit = 'serving';
+    final cal = TextEditingController();
+    final p = TextEditingController();
+    final c = TextEditingController();
+    final f = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Custom Food'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: brand, decoration: const InputDecoration(labelText: 'Brand')),
+              TextField(controller: serving, decoration: const InputDecoration(labelText: 'Serving desc')),
+              Row(children: [
+                Expanded(child: TextField(controller: servingQty, decoration: const InputDecoration(labelText: 'Serving qty'), keyboardType: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: servingUnit,
+                    items: const [
+                      DropdownMenuItem(value: 'serving', child: Text('serving')),
+                      DropdownMenuItem(value: 'slice', child: Text('slice')),
+                      DropdownMenuItem(value: 'ml', child: Text('ml')),
+                      DropdownMenuItem(value: 'tsp', child: Text('tsp')),
+                      DropdownMenuItem(value: 'tbsp', child: Text('tbsp')),
+                      DropdownMenuItem(value: 'fl oz', child: Text('Fluid ounce')),
+                      DropdownMenuItem(value: 'cup', child: Text('cup')),
+                      DropdownMenuItem(value: 'g', child: Text('gram')),
+                      DropdownMenuItem(value: 'oz', child: Text('oz')),
+                    ],
+                    onChanged: (v) => servingUnit = v ?? 'serving',
+                    decoration: const InputDecoration(labelText: 'Serving unit'),
+                  ),
+                ),
+              ]),
+              TextField(controller: cal, decoration: const InputDecoration(labelText: 'Calories'), keyboardType: TextInputType.number),
+              TextField(controller: p, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number),
+              TextField(controller: c, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number),
+              TextField(controller: f, decoration: const InputDecoration(labelText: 'Fats (g)'), keyboardType: TextInputType.number),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final id = await ref.read(foodRepositoryProvider).addCustomFood(
+            name: name.text.trim(),
+            brand: brand.text.trim().isEmpty ? null : brand.text.trim(),
+            servingDesc: serving.text.trim().isEmpty ? null : serving.text.trim(),
+            servingQty: double.tryParse(servingQty.text.trim()),
+            servingUnit: servingUnit,
+            calories: int.tryParse(cal.text) ?? 0,
+            proteinG: int.tryParse(p.text) ?? 0,
+            carbsG: int.tryParse(c.text) ?? 0,
+            fatsG: int.tryParse(f.text) ?? 0,
+          );
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food created')));
+      return id;
+    }
+    return null;
   }
 
   Future<void> _openSearchOrScan() async {
