@@ -13,6 +13,7 @@ class TemplatesScreen extends ConsumerStatefulWidget {
 
 class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   final _templateCtrl = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
   int? _selectedTemplateId;
 
   @override
@@ -24,6 +25,7 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
   @override
   void dispose() {
     _templateCtrl.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
@@ -139,14 +141,19 @@ class _TemplatesScreenState extends ConsumerState<TemplatesScreen> {
               final match = list.where((t) => t.id == _selectedTemplateId).toList();
               if (match.isNotEmpty) name = match.first.name;
             }
-            name ??= list.isNotEmpty ? list.first.name : null;
+            // Hydrate controller only when we have the correct template name
+            // and avoid overwriting if the user is actively editing.
+            if (name != null && !_nameFocus.hasFocus && _templateCtrl.text != name) {
+              _templateCtrl.text = name;
+            }
             return Row(
               children: [
                 Expanded(
                   child: TextFormField(
-                    initialValue: name ?? 'Edit Workout',
+                    controller: _templateCtrl,
+                    focusNode: _nameFocus,
                     style: Theme.of(context).textTheme.titleLarge,
-                    decoration: const InputDecoration(border: InputBorder.none, isCollapsed: true),
+                    decoration: const InputDecoration(border: InputBorder.none, isCollapsed: true, hintText: 'Edit Workout'),
                     onFieldSubmitted: (val) async {
                       final v = val.trim();
                       if (v.isEmpty || _selectedTemplateId == null) return;
