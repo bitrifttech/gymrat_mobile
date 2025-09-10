@@ -70,11 +70,6 @@ class HomeScreen extends ConsumerWidget {
                   },
             child: const Text('Today'),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => context.pushNamed('settings.edit'),
-            tooltip: 'Edit Profile & Goals',
-          ),
         ],
       ),
       body: latestGoal.when(
