@@ -38,14 +38,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: finished == null
-                    ? StreamBuilder<DateTime>(
-                        stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
-                        builder: (ctx, snap) {
-                          final now = snap.data ?? DateTime.now();
-                          final d = now.difference(started);
-                          return Text('Elapsed: ${_formatElapsed(d)}', style: Theme.of(context).textTheme.bodySmall);
-                        },
-                      )
+                    ? _ElapsedTicker(startedAt: started)
                     : Text('Total time: ${_formatElapsed(elapsed!)}', style: Theme.of(context).textTheme.bodySmall),
               ),
             ),
@@ -357,62 +350,141 @@ class _RestButton extends StatefulWidget {
   State<_RestButton> createState() => _RestButtonState();
 }
 
-class _RestButtonState extends State<_RestButton> {
-  Timer? _timer;
-  int _remaining = 0;
+class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
+  Timer? _ticker;
+  DateTime? _endAt;
+  bool _notifiedDone = false;
 
   @override
   void dispose() {
-    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _ticker?.cancel();
     super.dispose();
   }
 
   void _start() {
-    _timer?.cancel();
-    setState(() => _remaining = widget.restSeconds);
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_remaining <= 1) {
+    WidgetsBinding.instance.addObserver(this);
+    _ticker?.cancel();
+    setState(() {
+      _endAt = DateTime.now().add(Duration(seconds: widget.restSeconds));
+      _notifiedDone = false;
+    });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      final remaining = _computeRemainingSeconds();
+      if (remaining <= 0) {
         t.cancel();
-        setState(() => _remaining = 0);
-        if (mounted) {
+        if (!_notifiedDone) {
+          _notifiedDone = true;
           HapticFeedback.mediumImpact();
           SystemSound.play(SystemSoundType.alert);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
+          }
         }
+        setState(() {
+          _endAt = null;
+        });
       } else {
-        setState(() => _remaining -= 1);
+        setState(() {});
       }
     });
   }
 
   void _toggle() {
-    if (_remaining > 0) {
-      _timer?.cancel();
-      setState(() => _remaining = 0);
+    final active = _endAt != null && _computeRemainingSeconds() > 0;
+    if (active) {
+      _ticker?.cancel();
+      setState(() {
+        _endAt = null;
+      });
     } else {
       _start();
     }
   }
 
+  int _computeRemainingSeconds() {
+    if (_endAt == null) return 0;
+    final diff = _endAt!.difference(DateTime.now()).inSeconds;
+    return diff < 0 ? 0 : diff;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    if (state == AppLifecycleState.resumed) {
+      // Force a rebuild to update remaining based on end time after resume
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final remaining = _computeRemainingSeconds();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (_remaining > 0)
+        if (remaining > 0)
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: Text(
-              Duration(seconds: _remaining).toString().split('.').first.padLeft(8, '0'),
+              Duration(seconds: remaining).toString().split('.').first.padLeft(8, '0'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
         OutlinedButton.icon(
           icon: const Icon(Icons.timer),
-          label: Text(_remaining > 0 ? 'Stop' : 'Rest'),
+          label: Text(remaining > 0 ? 'Stop' : 'Rest'),
           onPressed: _toggle,
         ),
       ],
     );
+  }
+}
+
+class _ElapsedTicker extends StatefulWidget {
+  const _ElapsedTicker({required this.startedAt});
+  final DateTime startedAt;
+  @override
+  State<_ElapsedTicker> createState() => _ElapsedTickerState();
+}
+
+class _ElapsedTickerState extends State<_ElapsedTicker> with WidgetsBindingObserver {
+  Timer? _ticker;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+    }
+  }
+
+  String _formatElapsed(Duration d) {
+    final hours = d.inHours.toString().padLeft(2, '0');
+    final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final secs = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$secs';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final elapsed = now.difference(widget.startedAt);
+    return Text('Elapsed: ${_formatElapsed(elapsed)}', style: Theme.of(context).textTheme.bodySmall);
   }
 }
