@@ -200,6 +200,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                                       ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)
                                       : null,
                                 ),
+                                secondary: (t.notes ?? '').isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Notes',
+                                        icon: const Icon(Icons.notes),
+                                        onPressed: () {
+                                          showDialog<void>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Notes'),
+                                              content: Text(t.notes ?? ''),
+                                              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+                                            ),
+                                          );
+                                        },
+                                      ),
                                 onChanged: (v) async {
                                   if (v == true) {
                                     await ref.read(tasksRepositoryProvider).markTaskDoneForDate(taskId: t.id, date: selectedDate);

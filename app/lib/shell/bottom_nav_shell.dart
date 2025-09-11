@@ -114,22 +114,34 @@ class _TasksManageTabState extends ConsumerState<TasksManageTab> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () async {
-                final title = await showDialog<String>(
+                final data = await showDialog<Map<String, String?>>(
                   context: context,
                   builder: (ctx) {
-                    final c = TextEditingController();
+                    final titleCtrl = TextEditingController();
+                    final notesCtrl = TextEditingController();
                     return AlertDialog(
                       title: const Text('New Task'),
-                      content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Title')),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+                            const SizedBox(height: 8),
+                            TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'Notes (optional)'), maxLines: 4),
+                          ],
+                        ),
+                      ),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Create')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, {'title': titleCtrl.text.trim(), 'notes': notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim()}), child: const Text('Create')),
                       ],
                     );
                   },
                 );
-                if (title != null && title.isNotEmpty) {
-                  await ref.read(tasksRepositoryProvider).createTask(title: title);
+                final title = data?['title'] ?? '';
+                final notes = data?['notes'];
+                if (title.isNotEmpty) {
+                  await ref.read(tasksRepositoryProvider).createTask(title: title, notes: notes);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task created')));
                 }
@@ -144,40 +156,88 @@ class _TasksManageTabState extends ConsumerState<TasksManageTab> {
               child: ListTile(
                 leading: const Icon(Icons.checklist),
                 title: Text(t.title),
-                subtitle: Wrap(
-                  spacing: 6,
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (int d = 1; d <= 7; d++)
-                      FilterChip(
-                        label: Text(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d-1]),
-                        selected: (map[t.id] ?? const {}).contains(d),
-                        onSelected: (sel) async {
-                          if (sel) {
-                            await ref.read(tasksRepositoryProvider).assignTaskToDay(taskId: t.id, dayOfWeek: d);
-                          } else {
-                            await ref.read(tasksRepositoryProvider).unassignTaskFromDay(taskId: t.id, dayOfWeek: d);
-                          }
-                        },
-                      ),
+                    if ((t.notes ?? '').isNotEmpty) Text('Notes: ${t.notes}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey)),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        for (int d = 1; d <= 7; d++)
+                          FilterChip(
+                            label: Text(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d-1]),
+                            selected: (map[t.id] ?? const {}).contains(d),
+                            onSelected: (sel) async {
+                              if (sel) {
+                                await ref.read(tasksRepositoryProvider).assignTaskToDay(taskId: t.id, dayOfWeek: d);
+                              } else {
+                                await ref.read(tasksRepositoryProvider).unassignTaskFromDay(taskId: t.id, dayOfWeek: d);
+                              }
+                            },
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete task?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
-                        ],
-                      ),
-                    );
-                    if (ok == true) {
-                      await ref.read(tasksRepositoryProvider).deleteTask(t.id);
-                    }
-                  },
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit',
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final data = await showDialog<Map<String, String?>>(
+                          context: context,
+                          builder: (ctx) {
+                            final titleCtrl = TextEditingController(text: t.title);
+                            final notesCtrl = TextEditingController(text: t.notes ?? '');
+                            return AlertDialog(
+                              title: const Text('Edit Task'),
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+                                    const SizedBox(height: 8),
+                                    TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'Notes (optional)'), maxLines: 4),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, {'title': titleCtrl.text.trim(), 'notes': notesCtrl.text.trim()}), child: const Text('Save')),
+                              ],
+                            );
+                          },
+                        );
+                        if (data != null && (data['title'] ?? '').isNotEmpty) {
+                          final title = data['title']!.trim();
+                          final notes = (data['notes']?.trim().isEmpty ?? true) ? null : data['notes']!.trim();
+                          await ref.read(tasksRepositoryProvider).updateTask(taskId: t.id, title: title, notes: notes);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task updated')));
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete task?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                            ],
+                          ),
+                        );
+                        if (ok == true) {
+                          await ref.read(tasksRepositoryProvider).deleteTask(t.id);
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
