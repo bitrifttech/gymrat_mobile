@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
+import 'package:app/core/notifications.dart';
 
 class WorkoutDetailScreen extends ConsumerWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
@@ -369,15 +371,20 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
       _endAt = DateTime.now().add(Duration(seconds: widget.restSeconds));
       _notifiedDone = false;
     });
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+    _ticker = Timer.periodic(const Duration(seconds: 1), (t) async {
       if (!mounted) return;
       final remaining = _computeRemainingSeconds();
       if (remaining <= 0) {
         t.cancel();
         if (!_notifiedDone) {
           _notifiedDone = true;
-          HapticFeedback.mediumImpact();
-          SystemSound.play(SystemSoundType.alert);
+          final hasVib = await Vibration.hasVibrator();
+          if (hasVib == true) {
+            Vibration.vibrate(duration: 500);
+          } else {
+            HapticFeedback.mediumImpact();
+          }
+          await Notifications.showRestComplete();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
           }

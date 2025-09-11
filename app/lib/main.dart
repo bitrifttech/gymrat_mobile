@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/router/app_router.dart';
+import 'package:app/core/notifications.dart';
 import 'package:app/core/db_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Notifications.init();
   runApp(const ProviderScope(child: MyApp()));
 }
 
