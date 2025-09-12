@@ -371,6 +371,10 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
       _endAt = DateTime.now().add(Duration(seconds: widget.restSeconds));
       _notifiedDone = false;
     });
+    // Schedule a background notification for when the rest ends
+    if (_endAt != null) {
+      Notifications.scheduleRestCompleteAt(_endAt!);
+    }
     _ticker = Timer.periodic(const Duration(seconds: 1), (t) async {
       if (!mounted) return;
       final remaining = _computeRemainingSeconds();
@@ -385,6 +389,8 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
             HapticFeedback.mediumImpact();
           }
           await Notifications.showRestComplete();
+          // Clear any scheduled notification if we're in foreground
+          await Notifications.cancelScheduledRest();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
           }
@@ -405,6 +411,7 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
       setState(() {
         _endAt = null;
       });
+      Notifications.cancelScheduledRest();
     } else {
       _start();
     }

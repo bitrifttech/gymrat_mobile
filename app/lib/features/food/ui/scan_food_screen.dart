@@ -138,6 +138,66 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
     final id = await repo.fetchByBarcodeAndCache(code);
     if (!mounted) return;
     if (id == null) {
+      // Fallback: create custom food from barcode
+      final create = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Food not found'),
+          content: const Text('Create a custom food with this barcode?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Create')),
+          ],
+        ),
+      );
+      if (create == true) {
+        final name = TextEditingController();
+        final brand = TextEditingController();
+        final cal = TextEditingController();
+        final p = TextEditingController();
+        final c = TextEditingController();
+        final f = TextEditingController();
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('New Custom Food'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+                  TextField(controller: brand, decoration: const InputDecoration(labelText: 'Brand')),
+                  TextField(controller: cal, decoration: const InputDecoration(labelText: 'Calories'), keyboardType: TextInputType.number),
+                  TextField(controller: p, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number),
+                  TextField(controller: c, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number),
+                  TextField(controller: f, decoration: const InputDecoration(labelText: 'Fats (g)'), keyboardType: TextInputType.number),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+            ],
+          ),
+        );
+        if (ok == true) {
+          final newId = await ref.read(foodRepositoryProvider).addCustomFood(
+                name: name.text.trim().isEmpty ? 'Custom Food' : name.text.trim(),
+                brand: brand.text.trim().isEmpty ? null : brand.text.trim(),
+                servingDesc: '100 g',
+                servingQty: 100,
+                servingUnit: 'g',
+                calories: int.tryParse(cal.text) ?? 0,
+                proteinG: int.tryParse(p.text) ?? 0,
+                carbsG: int.tryParse(c.text) ?? 0,
+                fatsG: int.tryParse(f.text) ?? 0,
+                barcode: code,
+              );
+          if (!mounted) return;
+          await _promptAdd(newId);
+          return;
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not found')));
       setState(() => _handled = false);
       return;

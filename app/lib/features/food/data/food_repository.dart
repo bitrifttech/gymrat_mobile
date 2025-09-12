@@ -83,6 +83,7 @@ class FoodRepository {
     required int proteinG,
     required int carbsG,
     required int fatsG,
+    String? barcode,
   }) async {
     final userId = await _getCurrentUserId();
     return _db.into(_db.foods).insert(FoodsCompanion.insert(
@@ -92,6 +93,7 @@ class FoodRepository {
       servingDesc: Value(servingDesc),
       servingQty: Value(servingQty),
       servingUnit: Value(servingUnit),
+      barcode: Value(barcode),
       calories: Value(calories),
       proteinG: Value(proteinG),
       carbsG: Value(carbsG),
@@ -701,10 +703,43 @@ class FoodRepository {
       }
     }
 
-    int kcal = (product['nutriments']?['energy-kcal_100g'] as num?)?.round() ?? (product['nutriments']?['energy-kcal_serving'] as num?)?.round() ?? 0;
-    int protein = (product['nutriments']?['proteins_100g'] as num?)?.round() ?? (product['nutriments']?['proteins_serving'] as num?)?.round() ?? 0;
-    int carbs = (product['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? (product['nutriments']?['carbohydrates_serving'] as num?)?.round() ?? 0;
-    int fats = (product['nutriments']?['fat_100g'] as num?)?.round() ?? (product['nutriments']?['fat_serving'] as num?)?.round() ?? 0;
+    final kcalPer100 = (product['nutriments']?['energy-kcal_100g'] as num?)?.round();
+    final pPer100 = (product['nutriments']?['proteins_100g'] as num?)?.round();
+    final cPer100 = (product['nutriments']?['carbohydrates_100g'] as num?)?.round();
+    final fPer100 = (product['nutriments']?['fat_100g'] as num?)?.round();
+    final kcalServing = (product['nutriments']?['energy-kcal_serving'] as num?)?.round();
+    final pServing = (product['nutriments']?['proteins_serving'] as num?)?.round();
+    final cServing = (product['nutriments']?['carbohydrates_serving'] as num?)?.round();
+    final fServing = (product['nutriments']?['fat_serving'] as num?)?.round();
+
+    bool hasServingMacros = kcalServing != null || pServing != null || cServing != null || fServing != null;
+
+    int kcal;
+    int protein;
+    int carbs;
+    int fats;
+
+    if (hasServingMacros) {
+      // Use per-serving macros; if serving size missing, default to 1 serving
+      kcal = (kcalServing ?? 0);
+      protein = (pServing ?? 0);
+      carbs = (cServing ?? 0);
+      fats = (fServing ?? 0);
+      if (servingQty == null || (servingUnit == null || servingUnit.trim().isEmpty)) {
+        servingQty = 1;
+        servingUnit = 'serving';
+        servingDesc ??= '1 serving';
+      }
+    } else {
+      // Normalize to 100 g as the base serving when only _100g is available
+      kcal = (kcalPer100 ?? 0);
+      protein = (pPer100 ?? 0);
+      carbs = (cPer100 ?? 0);
+      fats = (fPer100 ?? 0);
+      servingQty = 100;
+      servingUnit = 'g';
+      servingDesc = '100 g';
+    }
 
     final existing = barcode != null
         ? await (_db.select(_db.foods)..where((f) => f.barcode.equals(barcode))).getSingleOrNull()

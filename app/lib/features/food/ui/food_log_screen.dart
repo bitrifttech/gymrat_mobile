@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +41,18 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     final result = await showDialog<(double qty, String? unit)>(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
+        double sliderVal = double.tryParse(qtyController.text) ?? 1.0;
+        // Rotary (wheel) picker controllers
+        const int maxInt = 99999;
+        int initialIntPart = sliderVal.floor().clamp(0, maxInt);
+        double rem = sliderVal - initialIntPart;
+        final List<double> fr = [0.0, 0.125, 0.25, 1.0/3.0, 0.5, 2.0/3.0, 0.75];
+        int initialFracIdx = 0; double bestDiff = 1e9;
+        for (int i = 0; i < fr.length; i++) { final d = (rem - fr[i]).abs(); if (d < bestDiff) { bestDiff = d; initialFracIdx = i; } }
+        final FixedExtentScrollController intCtrl = FixedExtentScrollController(initialItem: initialIntPart);
+        final FixedExtentScrollController fracCtrl = FixedExtentScrollController(initialItem: initialFracIdx);
+        return StatefulBuilder(builder: (ctx, setStateSB) {
+          return AlertDialog(
           title: const Text('Add Quantity'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -54,31 +66,94 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 controller: qtyController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Quantity'),
+                onChanged: (v) {
+                  final d = double.tryParse(v) ?? sliderVal;
+                  setStateSB(() => sliderVal = d < 0 ? 0 : d);
+                  // Sync wheels to typed value
+                  final intPart = sliderVal.floor().clamp(0, maxInt);
+                  int fracIdx = 0; double best = 1e9; final rem2 = sliderVal - intPart;
+                  for (int i = 0; i < fr.length; i++) { final d = (rem2 - fr[i]).abs(); if (d < best) { best = d; fracIdx = i; } }
+                  intCtrl.jumpToItem(intPart);
+                  fracCtrl.jumpToItem(fracIdx);
+                },
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  IconButton(
-                    tooltip: 'Decrease',
-                    onPressed: () {
-                      final currentVal = double.tryParse(qtyController.text) ?? 0;
-                      final next = (currentVal - 1).clamp(0, double.infinity);
-                      qtyController.text = next.toStringAsFixed(2);
-                    },
-                    icon: const Icon(Icons.remove_circle_outline),
-                  ),
-                  IconButton(
-                    tooltip: 'Increase',
-                    onPressed: () {
-                      final currentVal = double.tryParse(qtyController.text) ?? 0;
-                      final next = currentVal + 1;
-                      qtyController.text = next.toStringAsFixed(2);
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                ],
+              SizedBox(
+                height: 160,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ListWheelScrollView.useDelegate(
+                            controller: intCtrl,
+                            physics: const FixedExtentScrollPhysics(),
+                            itemExtent: 36,
+                            onSelectedItemChanged: (idx) {
+                              final fracIdx = fracCtrl.selectedItem;
+                              final val = idx + fr[fracIdx];
+                              setStateSB(() {
+                                sliderVal = val;
+                                qtyController.text = val.toStringAsFixed(2);
+                              });
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: maxInt + 1,
+                              builder: (ctx, idx) {
+                                final bool isSel = idx == intCtrl.selectedItem;
+                                return Center(
+                                  child: Text(
+                                    idx.toString(),
+                                    style: TextStyle(fontSize: isSel ? 18 : 14, fontWeight: isSel ? FontWeight.w600 : FontWeight.normal),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const IgnorePointer(child: CupertinoPickerDefaultSelectionOverlay()),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ListWheelScrollView.useDelegate(
+                            controller: fracCtrl,
+                            physics: const FixedExtentScrollPhysics(),
+                            itemExtent: 36,
+                            onSelectedItemChanged: (fIdx) {
+                              final intPart = intCtrl.selectedItem;
+                              final val = intPart + fr[fIdx];
+                              setStateSB(() {
+                                sliderVal = val;
+                                qtyController.text = val.toStringAsFixed(2);
+                              });
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: 7,
+                              builder: (ctx, idx) {
+                                const labels = ['0','1/8','1/4','1/3','1/2','2/3','3/4'];
+                                final bool isSel = idx == fracCtrl.selectedItem;
+                                return Center(
+                                  child: Text(
+                                    labels[idx],
+                                    style: TextStyle(fontSize: isSel ? 18 : 14, fontWeight: isSel ? FontWeight.w600 : FontWeight.normal),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const IgnorePointer(child: CupertinoPickerDefaultSelectionOverlay()),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: unitValue,
                 items: const [
@@ -96,37 +171,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                 decoration: const InputDecoration(labelText: 'Unit'),
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final frac in const [
-                      ('1/4', 0.25),
-                      ('1/3', 1.0/3.0),
-                      ('1/2', 0.5),
-                      ('2/3', 2.0/3.0),
-                      ('3/4', 0.75),
-                    ])
-                      ActionChip(
-                        label: Text(frac.$1),
-                        onPressed: () {
-                          final baseQty = food?.servingQty;
-                          final baseUnit = _canonUnit(food?.servingUnit);
-                          final selectedUnit = _canonUnit(unitValue);
-                          double newQty;
-                          if (baseQty != null && baseUnit.isNotEmpty && selectedUnit == baseUnit) {
-                            newQty = baseQty * frac.$2;
-                          } else {
-                            newQty = frac.$2;
-                          }
-                          qtyController.text = newQty.toStringAsFixed(2);
-                        },
-                      ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
           actions: [
@@ -140,7 +185,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
               child: const Text('Add'),
             ),
           ],
-        );
+          );
+        });
       },
     );
     if (result == null) return;

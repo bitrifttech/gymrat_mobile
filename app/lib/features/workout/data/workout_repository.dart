@@ -48,6 +48,30 @@ class RecentPr {
   final DateTime date;
 }
 
+class WorkoutExerciseDelta {
+  const WorkoutExerciseDelta({
+    required this.exerciseName,
+    required this.tonnage,
+    required this.previousTonnage,
+  });
+  final String exerciseName;
+  final double tonnage;
+  final double previousTonnage;
+  double get delta => tonnage - previousTonnage;
+}
+
+class WorkoutPr {
+  const WorkoutPr({
+    required this.exerciseName,
+    required this.oneRm,
+    required this.previousBest,
+  });
+  final String exerciseName;
+  final double oneRm;
+  final double previousBest;
+  double get delta => oneRm - previousBest;
+}
+
 class WorkoutRepository {
   WorkoutRepository(this._db);
   final AppDatabase _db;
@@ -737,6 +761,98 @@ class WorkoutRepository {
     }
     return byExercise.values.whereType<RecentPr>().toList()..sort((a, b) => b.date.compareTo(a.date));
   }
+
+  Future<List<WorkoutPr>> readPrsForWorkout(int workoutId) async {
+    final workout = await (_db.select(_db.workouts)..where((w) => w.id.equals(workoutId))).getSingleOrNull();
+    if (workout == null) return [];
+    final userId = await _getCurrentUserId();
+    final startedAt = workout.startedAt;
+    // Current workout per-exercise best 1RM
+    final rows = await _db.customSelect(
+      'SELECT e.name AS name, MAX(COALESCE(ws.weight,0.0) * (1.0 + COALESCE(ws.reps,0)/30.0)) AS oneRm '
+      'FROM workout_sets ws '
+      'JOIN workout_exercises we ON ws.workout_exercise_id = we.id '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'WHERE we.workout_id = ?1 GROUP BY e.name',
+      variables: [Variable<int>(workoutId)],
+      readsFrom: {_db.workoutSets, _db.workoutExercises, _db.exercises},
+    ).get();
+    final list = <WorkoutPr>[];
+    for (final r in rows) {
+      final name = (r.data['name'] as String?) ?? '';
+      final current = ((r.data['oneRm'] as num?) ?? 0).toDouble();
+      // Previous best strictly before this workout
+      final prevRow = await _db.customSelect(
+        'SELECT MAX(COALESCE(ws.weight,0.0) * (1.0 + COALESCE(ws.reps,0)/30.0)) AS oneRm '
+        'FROM workout_sets ws '
+        'JOIN workout_exercises we ON ws.workout_exercise_id = we.id '
+        'JOIN workouts w ON w.id = we.workout_id '
+        'JOIN exercises e ON e.id = we.exercise_id '
+        'WHERE w.user_id = ?1 AND e.name = ?2 AND w.started_at < ?3',
+        variables: [Variable<int>(userId), Variable<String>(name), Variable<DateTime>(startedAt)],
+        readsFrom: {_db.workoutSets, _db.workoutExercises, _db.workouts, _db.exercises},
+      ).getSingleOrNull();
+      final prev = ((prevRow?.data['oneRm'] as num?) ?? 0).toDouble();
+      if (current > 0 && current > prev + 1e-9) {
+        list.add(WorkoutPr(exerciseName: name, oneRm: current, previousBest: prev));
+      }
+    }
+    // Sort by delta desc
+    list.sort((a, b) => b.delta.compareTo(a.delta));
+    return list;
+  }
+
+  Future<List<WorkoutExerciseDelta>> readExerciseDeltasForWorkout(int workoutId) async {
+    final workout = await (_db.select(_db.workouts)..where((w) => w.id.equals(workoutId))).getSingleOrNull();
+    if (workout == null) return [];
+    final userId = await _getCurrentUserId();
+    final startedAt = workout.startedAt;
+    // Current per-exercise tonnage for this workout
+    final currentRows = await _db.customSelect(
+      'SELECT e.name AS name, '
+      "COALESCE(SUM(COALESCE(ws.weight,0.0) * COALESCE(ws.reps,0)), 0) AS tonnage "
+      'FROM workout_exercises we '
+      'JOIN exercises e ON e.id = we.exercise_id '
+      'LEFT JOIN workout_sets ws ON ws.workout_exercise_id = we.id '
+      'WHERE we.workout_id = ?1 GROUP BY e.name',
+      variables: [Variable<int>(workoutId)],
+      readsFrom: {_db.workoutExercises, _db.workoutSets, _db.exercises},
+    ).get();
+
+    final result = <WorkoutExerciseDelta>[];
+    for (final r in currentRows) {
+      final name = (r.data['name'] as String?) ?? '';
+      final currTonnage = ((r.data['tonnage'] as num?) ?? 0).toDouble();
+      // Find last previous workout containing this exercise
+      final prevW = await _db.customSelect(
+        'SELECT w.id AS id, w.started_at AS startedAt FROM workouts w '
+        'JOIN workout_exercises we ON we.workout_id = w.id '
+        'JOIN exercises e ON e.id = we.exercise_id '
+        'WHERE w.user_id = ?1 AND e.name = ?2 AND w.started_at < ?3 '
+        'ORDER BY w.started_at DESC LIMIT 1',
+        variables: [Variable<int>(userId), Variable<String>(name), Variable<DateTime>(startedAt)],
+        readsFrom: {_db.workouts, _db.workoutExercises, _db.exercises},
+      ).getSingleOrNull();
+      double prevTonnage = 0;
+      if (prevW != null) {
+        final prevId = prevW.data['id'] as int;
+        final prevTonRow = await _db.customSelect(
+          'SELECT COALESCE(SUM(COALESCE(ws.weight,0.0) * COALESCE(ws.reps,0)), 0) AS tonnage '
+          'FROM workout_sets ws '
+          'JOIN workout_exercises we ON we.id = ws.workout_exercise_id '
+          'JOIN exercises e ON e.id = we.exercise_id '
+          'WHERE we.workout_id = ?1 AND e.name = ?2',
+          variables: [Variable<int>(prevId), Variable<String>(name)],
+          readsFrom: {_db.workoutSets, _db.workoutExercises, _db.exercises},
+        ).getSingleOrNull();
+        prevTonnage = ((prevTonRow?.data['tonnage'] as num?) ?? 0).toDouble();
+      }
+      result.add(WorkoutExerciseDelta(exerciseName: name, tonnage: currTonnage, previousTonnage: prevTonnage));
+    }
+    // Keep same order as currentRows by name
+    result.sort((a, b) => a.exerciseName.compareTo(b.exerciseName));
+    return result;
+  }
 }
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
@@ -818,4 +934,12 @@ final workoutSummaryProvider = FutureProvider.family<WorkoutSummaryData?, int>((
 
 final recentPrsProvider = FutureProvider<List<RecentPr>>((ref) async {
   return ref.read(workoutRepositoryProvider).readRecentPrs(days: 7);
+});
+
+final workoutPrsForWorkoutProvider = FutureProvider.family<List<WorkoutPr>, int>((ref, workoutId) async {
+  return ref.read(workoutRepositoryProvider).readPrsForWorkout(workoutId);
+});
+
+final exerciseDeltasForWorkoutProvider = FutureProvider.family<List<WorkoutExerciseDelta>, int>((ref, workoutId) async {
+  return ref.read(workoutRepositoryProvider).readExerciseDeltasForWorkout(workoutId);
 });
