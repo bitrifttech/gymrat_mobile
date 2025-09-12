@@ -15,6 +15,7 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
   bool _handled = false;
   String _mealType = 'breakfast';
   late DateTime _date;
+  bool _liveDetected = false;
 
   @override
   void initState() {
@@ -130,6 +131,7 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
     if (_handled) return;
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
+    setState(() => _liveDetected = true);
     final code = barcodes.first.rawValue;
     if (code == null || code.isEmpty) return;
     setState(() => _handled = true);
@@ -199,7 +201,7 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not found')));
-      setState(() => _handled = false);
+      setState(() { _handled = false; _liveDetected = false; });
       return;
     }
     await _promptAdd(id);
@@ -209,8 +211,40 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Scan Barcode')),
-      body: MobileScanner(
-        onDetect: _onDetect,
+      body: LayoutBuilder(
+        builder: (ctx, constraints) {
+          final double width = constraints.maxWidth;
+          final double height = constraints.maxHeight;
+          final double boxWidth = width * 0.8;
+          final double boxHeight = height * 0.28;
+          final double left = (width - boxWidth) / 2;
+          final double top = (height - boxHeight) / 3; // a bit higher than center
+          final Rect scanRect = Rect.fromLTWH(left, top, boxWidth, boxHeight);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              MobileScanner(
+                onDetect: _onDetect,
+                scanWindow: scanRect,
+              ),
+              // Framing box overlay
+              Positioned(
+                left: left,
+                top: top,
+                width: boxWidth,
+                height: boxHeight,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _liveDetected ? Colors.greenAccent : Colors.white, width: 3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
