@@ -235,14 +235,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     }
   }
 
-  ButtonStyle _mealBtnStyle(String type, BuildContext context) {
-    final selected = _mealType == type;
-    final scheme = Theme.of(context).colorScheme;
-    return ElevatedButton.styleFrom(
-      backgroundColor: selected ? scheme.primary : null,
-      foregroundColor: selected ? scheme.onPrimary : null,
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -255,48 +248,60 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: _mealBtnStyle('breakfast', context),
-                    onPressed: () => setState(() => _mealType = 'breakfast'),
-                    child: const Text('Breakfast'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: _mealBtnStyle('lunch', context),
-                    onPressed: () => setState(() => _mealType = 'lunch'),
-                    child: const Text('Lunch'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                    Expanded(
-                  child: ElevatedButton(
-                    style: _mealBtnStyle('dinner', context),
-                    onPressed: () => setState(() => _mealType = 'dinner'),
-                    child: const Text('Dinner'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                    Expanded(
-                  child: ElevatedButton(
-                    style: _mealBtnStyle('snack', context),
-                    onPressed: () => setState(() => _mealType = 'snack'),
-                    child: const Text('Snack'),
-                      ),
-                    ),
-                  ],
-                ),
-          ),
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
               children: [
+                perMealTotals.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (totals) {
+                    int getKcal(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).calories;
+                    int getP(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).proteinG;
+                    int getC(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).carbsG;
+                    int getF(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).fatsG;
+                    Widget tile(String t, String label) {
+                      final selected = _mealType == t;
+                      final scheme = Theme.of(context).colorScheme;
+                      final bg = selected ? scheme.primaryContainer : Theme.of(context).cardColor;
+                      final fg = Theme.of(context).colorScheme.onSurface;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _mealType = t),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: bg,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: selected ? scheme.primary : Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(label, style: Theme.of(context).textTheme.labelMedium),
+                                const SizedBox(height: 4),
+                                Text('${getKcal(t)} kcal', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: fg)),
+                                const SizedBox(height: 2),
+                                Text('P ${getP(t)} • C ${getC(t)} • F ${getF(t)}', style: Theme.of(context).textTheme.bodySmall),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return Row(
+                      children: [
+                        tile('breakfast', 'Breakfast'),
+                        tile('lunch', 'Lunch'),
+                        tile('dinner', 'Dinner'),
+                        tile('snack', 'Snack'),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -315,52 +320,6 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                perMealTotals.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (e, st) => const SizedBox.shrink(),
-                  data: (totals) {
-                    int getKcal(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).calories;
-                    int getP(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).proteinG;
-                    int getC(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).carbsG;
-                    int getF(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).fatsG;
-                    Widget tile(String t, String label) {
-                      final selected = _mealType == t;
-                      final scheme = Theme.of(context).colorScheme;
-                      final bg = selected ? scheme.primaryContainer : Theme.of(context).cardColor;
-                      final fg = Theme.of(context).colorScheme.onSurface;
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: bg,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: selected ? scheme.primary : Colors.grey.shade300),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                              Text(label, style: Theme.of(context).textTheme.labelMedium),
-                              const SizedBox(height: 4),
-                              Text('${getKcal(t)} kcal', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: fg)),
-                              const SizedBox(height: 2),
-                              Text('P ${getP(t)} • C ${getC(t)} • F ${getF(t)}', style: Theme.of(context).textTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return Row(
-                      children: [
-                        tile('breakfast', 'Breakfast'),
-                        tile('lunch', 'Lunch'),
-                        tile('dinner', 'Dinner'),
-                        tile('snack', 'Snack'),
-                      ],
-                    );
-                  },
                 ),
               ],
             ),
