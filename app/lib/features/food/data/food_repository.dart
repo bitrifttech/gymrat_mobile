@@ -496,6 +496,37 @@ class FoodRepository {
     });
   }
 
+  // Per-meal totals for an arbitrary date
+  Stream<List<MealTotals>> watchPerMealTotalsForDate(DateTime date) {
+    final day = _dateOnly(date);
+    final query = _db.customSelect(
+      'SELECT m.meal_type AS mealType, '
+      'COALESCE(SUM(mi.calories), 0) AS calories, '
+      'COALESCE(SUM(mi.protein_g), 0) AS proteinG, '
+      'COALESCE(SUM(mi.carbs_g), 0) AS carbsG, '
+      'COALESCE(SUM(mi.fats_g), 0) AS fatsG '
+      'FROM meal_items mi '
+      'JOIN meals m ON m.id = mi.meal_id '
+      'WHERE m.date = ?1 '
+      'GROUP BY m.meal_type '
+      'ORDER BY m.meal_type',
+      variables: [Variable<DateTime>(day)],
+      readsFrom: {_db.mealItems, _db.meals},
+    );
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        final data = row.data;
+        return MealTotals(
+          mealType: (data['mealType'] as String?) ?? '',
+          calories: (data['calories'] as int?) ?? 0,
+          proteinG: (data['proteinG'] as int?) ?? 0,
+          carbsG: (data['carbsG'] as int?) ?? 0,
+          fatsG: (data['fatsG'] as int?) ?? 0,
+        );
+      }).toList();
+    });
+  }
+
   Future<void> updateItemQuantity({required int itemId, required double quantity}) async {
     final item = await (_db.select(_db.mealItems)..where((i) => i.id.equals(itemId))).getSingle();
     final food = await (_db.select(_db.foods)..where((f) => f.id.equals(item.foodId))).getSingle();
@@ -935,6 +966,11 @@ final mealsForDateProvider = StreamProvider.family<List<(Meal, List<(MealItem, F
 
 final totalsForDateProvider = StreamProvider.family<MacroTotals, DateTime>((ref, date) {
   return ref.read(foodRepositoryProvider).watchTotalsForDate(date);
+});
+
+// Per-meal totals for an arbitrary date
+final perMealTotalsForDateProvider = StreamProvider.family<List<MealTotals>, DateTime>((ref, date) {
+  return ref.read(foodRepositoryProvider).watchPerMealTotalsForDate(date);
 });
 
 // Meal Template providers

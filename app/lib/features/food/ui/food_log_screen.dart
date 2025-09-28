@@ -52,7 +52,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
         final FixedExtentScrollController intCtrl = FixedExtentScrollController(initialItem: initialIntPart);
         final FixedExtentScrollController fracCtrl = FixedExtentScrollController(initialItem: initialFracIdx);
         return StatefulBuilder(builder: (ctx, setStateSB) {
-          return AlertDialog(
+        return AlertDialog(
           title: const Text('Add Quantity'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -185,7 +185,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
               child: const Text('Add'),
             ),
           ],
-          );
+        );
         });
       },
     );
@@ -247,6 +247,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
   @override
   Widget build(BuildContext context) {
     final meals = ref.watch(mealsForDateProvider(_date));
+    final perMealTotals = ref.watch(perMealTotalsForDateProvider(_date));
 
     return Scaffold(
       appBar: AppBar(
@@ -274,7 +275,7 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                    Expanded(
                   child: ElevatedButton(
                     style: _mealBtnStyle('dinner', context),
                     onPressed: () => setState(() => _mealType = 'dinner'),
@@ -282,34 +283,84 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                    Expanded(
                   child: ElevatedButton(
                     style: _mealBtnStyle('snack', context),
                     onPressed: () => setState(() => _mealType = 'snack'),
                     child: const Text('Snack'),
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _showCustomFoodsPicker,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Food'),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _showCustomFoodsPicker,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Food'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _openSearchOrScan,
+                        icon: const Icon(Icons.search),
+                        label: const Text('Search For Food'),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _openSearchOrScan,
-                    icon: const Icon(Icons.search),
-                    label: const Text('Search For Food'),
-                  ),
+                const SizedBox(height: 8),
+                perMealTotals.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (totals) {
+                    int getKcal(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).calories;
+                    int getP(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).proteinG;
+                    int getC(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).carbsG;
+                    int getF(String t) => totals.firstWhere((x) => x.mealType == t, orElse: () => const MealTotals(mealType: '', calories: 0, proteinG: 0, carbsG: 0, fatsG: 0)).fatsG;
+                    Widget tile(String t, String label) {
+                      final selected = _mealType == t;
+                      final scheme = Theme.of(context).colorScheme;
+                      final bg = selected ? scheme.primaryContainer : Theme.of(context).cardColor;
+                      final fg = Theme.of(context).colorScheme.onSurface;
+                      return Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: bg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: selected ? scheme.primary : Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                              Text(label, style: Theme.of(context).textTheme.labelMedium),
+                              const SizedBox(height: 4),
+                              Text('${getKcal(t)} kcal', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: fg)),
+                              const SizedBox(height: 2),
+                              Text('P ${getP(t)} • C ${getC(t)} • F ${getF(t)}', style: Theme.of(context).textTheme.bodySmall),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return Row(
+                      children: [
+                        tile('breakfast', 'Breakfast'),
+                        tile('lunch', 'Lunch'),
+                        tile('dinner', 'Dinner'),
+                        tile('snack', 'Snack'),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -340,8 +391,8 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(f.name, style: Theme.of(context).textTheme.bodyLarge),
-                                  if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
-                                    Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
+                            if ((f.brand ?? '').isNotEmpty || (f.servingDesc ?? '').isNotEmpty)
+                              Text('${f.brand ?? ''} ${f.servingDesc ?? ''}'.trim()),
                                   Text('Qty ${mi.quantity.toStringAsFixed(2)}${(mi.unit == null || mi.unit!.trim().isEmpty) ? '' : ' ${mi.unit}'}'),
                                   Text('P ${mi.proteinG}g • C ${mi.carbsG}g • F ${mi.fatsG}g'),
                                 ],
@@ -464,9 +515,9 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, st) => Center(child: Text('Error: $e')),
                   data: (foods) {
-                    return Column(
-                      children: [
-                        ListTile(
+              return Column(
+                children: [
+                    ListTile(
                           leading: const Icon(Icons.add),
                           title: const Text('New custom food'),
                           onTap: () async {
@@ -493,10 +544,10 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
                                     );
                                   },
                                 ),
-                        ),
-                      ],
-                    );
-                  },
+                    ),
+                ],
+              );
+            },
                 );
               },
             ),
