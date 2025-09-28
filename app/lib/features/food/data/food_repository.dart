@@ -108,7 +108,7 @@ class FoodRepository {
     return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
       return (_db.select(_db.foods)
             ..where((f) => f.userId.equals(userId) & f.isCustom.equals(true))
-            ..orderBy([(f) => OrderingTerm.asc(f.name)]))
+            ..orderBy([(f) => OrderingTerm.asc(f.name.collate(Collate.noCase))]))
           .watch();
     });
   }
