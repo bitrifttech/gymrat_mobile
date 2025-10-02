@@ -52,6 +52,8 @@ dependencies:
   file_picker: ^8.0.3
   archive: ^3.4.10
   flutter_file_dialog: ^3.0.2
+  package_info_plus: ^9.0.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +77,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - images/
 
 flutter_launcher_icons:
   android: true

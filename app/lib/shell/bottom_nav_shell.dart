@@ -5,6 +5,7 @@ import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:app/features/workout/ui/templates_screen.dart';
 import 'package:app/features/settings/ui/edit_settings_screen.dart';
+import 'package:app/features/settings/ui/about_screen.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'package:app/data/db/app_database.dart';
 
@@ -48,7 +49,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -71,6 +72,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
             Tab(text: 'Tasks', icon: Icon(Icons.check_circle)),
             Tab(text: 'Schedule', icon: Icon(Icons.calendar_today)),
             Tab(text: 'Profile', icon: Icon(Icons.settings)),
+            Tab(text: 'About', icon: Icon(Icons.info_outline)),
           ],
         ),
       ),
@@ -82,6 +84,7 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
           const TasksManageTab(),
           const ScheduleScreen(),
           const EditSettingsScreen(),
+          const AboutScreen(),
         ],
       ),
     );
