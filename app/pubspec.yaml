@@ -54,6 +54,7 @@ dependencies:
   flutter_file_dialog: ^3.0.2
   package_info_plus: ^9.0.0
   url_launcher: ^6.3.2
+  palette_generator: ^0.3.3+7
 
 dev_dependencies:
   flutter_test:
