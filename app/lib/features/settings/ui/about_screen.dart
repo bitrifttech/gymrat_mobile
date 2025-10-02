@@ -72,6 +72,9 @@ class _AboutScreenState extends State<AboutScreen> {
         );
 
         final onPrimary = ThemeData.estimateBrightnessForColor(primary) == Brightness.dark ? Colors.white : Colors.black87;
+        final media = MediaQuery.of(context);
+        final double topInset = (media.padding.top + kToolbarHeight - 28).clamp(0.0, double.infinity).toDouble();
+        final double logoSize = (media.size.width * 0.75).clamp(240.0, 380.0).toDouble();
 
         return Scaffold(
           appBar: AppBar(
@@ -85,16 +88,16 @@ class _AboutScreenState extends State<AboutScreen> {
           body: Container(
             decoration: BoxDecoration(gradient: bgGradient),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, topInset, 16, 16),
               children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Center(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.asset(
                     'images/bitrift-logo.png',
-                    width: 200,
-                    height: 200,
+                    width: logoSize,
+                    height: logoSize,
                     fit: BoxFit.contain,
                   ),
                 ),
