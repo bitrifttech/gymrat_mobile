@@ -162,19 +162,21 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 child: Column(
                   children: [
-                      const ListTile(
-                        leading: Icon(Icons.business),
-                        title: Text('Company'),
-                        subtitle: Text('Bitrift'),
+                      _StyledListTile(
+                        icon: Icons.business_rounded,
+                        iconColor: vibrant,
+                        title: 'Company',
+                        subtitle: 'Bitrift',
                       ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.email_outlined),
-                        title: const Text('Support Email'),
-                        subtitle: const SelectableText('gymrat@bitrift.tech'),
+                      Divider(height: 1, color: Colors.white.withOpacity(0.2)),
+                      _StyledListTile(
+                        icon: Icons.email_rounded,
+                        iconColor: darkVibrant,
+                        title: 'Support Email',
+                        subtitle: 'gymrat@bitrift.tech',
                         trailing: IconButton(
                           tooltip: 'Copy email',
-                          icon: const Icon(Icons.copy),
+                          icon: Icon(Icons.copy_rounded, color: vibrant),
                           onPressed: () => _copyToClipboard('gymrat@bitrift.tech', 'Email address copied'),
                         ),
                       ),
@@ -193,24 +195,30 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.public),
-                        title: const Text('Website'),
-                        subtitle: const Text('bitrift.tech'),
+                      _StyledListTile(
+                        icon: Icons.public_rounded,
+                        iconColor: muted,
+                        title: 'Website',
+                        subtitle: 'bitrift.tech',
+                        trailing: Icon(Icons.open_in_new_rounded, color: vibrant.withOpacity(0.7), size: 20),
                         onTap: () => launchUrl(Uri.parse('https://bitrift.tech'), mode: LaunchMode.externalApplication),
                       ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.alternate_email),
-                        title: const Text('X (Twitter)'),
-                        subtitle: const Text('@BitRiftTech'),
+                      Divider(height: 1, color: Colors.white.withOpacity(0.2)),
+                      _StyledListTile(
+                        icon: Icons.alternate_email_rounded,
+                        iconColor: vibrant,
+                        title: 'X (Twitter)',
+                        subtitle: '@BitRiftTech',
+                        trailing: Icon(Icons.open_in_new_rounded, color: vibrant.withOpacity(0.7), size: 20),
                         onTap: () => launchUrl(Uri.parse('https://x.com/BitRiftTech'), mode: LaunchMode.externalApplication),
                       ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.code),
-                        title: const Text('GitHub'),
-                        subtitle: const Text('github.com/bitrifttech'),
+                      Divider(height: 1, color: Colors.white.withOpacity(0.2)),
+                      _StyledListTile(
+                        icon: Icons.code_rounded,
+                        iconColor: darkVibrant,
+                        title: 'GitHub',
+                        subtitle: 'github.com/bitrifttech',
+                        trailing: Icon(Icons.open_in_new_rounded, color: vibrant.withOpacity(0.7), size: 20),
                         onTap: () => launchUrl(Uri.parse('https://github.com/bitrifttech'), mode: LaunchMode.externalApplication),
                       ),
                     ],
@@ -228,9 +236,12 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.article_outlined),
-                        title: const Text('Open source licenses'),
+                      _StyledListTile(
+                        icon: Icons.article_rounded,
+                        iconColor: lightVibrant,
+                        title: 'Open source licenses',
+                        subtitle: 'View third-party licenses',
+                        trailing: Icon(Icons.chevron_right_rounded, color: vibrant.withOpacity(0.7)),
                         onTap: () => showLicensePage(
                           context: context,
                           applicationName: info.appName,
@@ -241,10 +252,13 @@ class _AboutScreenState extends State<AboutScreen> {
                           ),
                         ),
                       ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.description_outlined),
-                        title: const Text('Terms of Service'),
+                      Divider(height: 1, color: Colors.white.withOpacity(0.2)),
+                      _StyledListTile(
+                        icon: Icons.description_rounded,
+                        iconColor: muted,
+                        title: 'Terms of Service',
+                        subtitle: 'Read our terms',
+                        trailing: Icon(Icons.chevron_right_rounded, color: vibrant.withOpacity(0.7)),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
                         ),
@@ -347,6 +361,84 @@ class _GlassCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StyledListTile extends StatelessWidget {
+  const _StyledListTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              iconColor.withOpacity(0.8),
+              iconColor.withOpacity(0.5),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: iconColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: 24),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+          color: Colors.white,
+          shadows: [
+            Shadow(
+              color: Colors.black26,
+              offset: Offset(0, 1),
+              blurRadius: 2,
+            ),
+          ],
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.white.withOpacity(0.85),
+          shadows: const [
+            Shadow(
+              color: Colors.black26,
+              offset: Offset(0, 1),
+              blurRadius: 2,
+            ),
+          ],
+        ),
+      ),
+      trailing: trailing,
     );
   }
 }
