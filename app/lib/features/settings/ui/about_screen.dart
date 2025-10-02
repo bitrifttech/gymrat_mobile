@@ -73,22 +73,14 @@ class _AboutScreenState extends State<AboutScreen> {
 
         final onPrimary = ThemeData.estimateBrightnessForColor(primary) == Brightness.dark ? Colors.white : Colors.black87;
         final media = MediaQuery.of(context);
-        final double topInset = (media.padding.top + kToolbarHeight - 28).clamp(0.0, double.infinity).toDouble();
         final double logoSize = (media.size.width * 0.75).clamp(240.0, 380.0).toDouble();
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('About'),
-            backgroundColor: Colors.transparent,
-            foregroundColor: onPrimary,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-          ),
           extendBodyBehindAppBar: true,
           body: Container(
             decoration: BoxDecoration(gradient: bgGradient),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, topInset, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
               children: [
               const SizedBox(height: 4),
               Center(
@@ -102,7 +94,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
                 Center(child: Text(info.appName, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: onPrimary))),
                 Center(
                   child: Text(
