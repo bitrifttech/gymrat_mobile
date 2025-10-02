@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,7 +36,7 @@ class _AboutScreenState extends State<AboutScreen> {
       final palette = await PaletteGenerator.fromImageProvider(
         const AssetImage('images/bitrift-logo.png'),
         size: const Size(400, 400),
-        maximumColorCount: 16,
+        maximumColorCount: 20,
       );
       if (!mounted) return;
       setState(() => _palette = palette);
@@ -63,15 +64,25 @@ class _AboutScreenState extends State<AboutScreen> {
         final info = snapshot.data!;
         final version = '${info.version} (build ${info.buildNumber})';
 
-        final primary = _palette?.vibrantColor?.color ?? _palette?.dominantColor?.color ?? const Color(0xFF0A84FF);
-        final secondary = _palette?.lightVibrantColor?.color ?? _palette?.mutedColor?.color ?? const Color(0xFF6EC6FF);
+        // Extract vibrant colors from logo palette
+        final vibrant = _palette?.vibrantColor?.color ?? const Color(0xFFE63946);
+        final darkVibrant = _palette?.darkVibrantColor?.color ?? const Color(0xFF1D3557);
+        final lightVibrant = _palette?.lightVibrantColor?.color ?? const Color(0xFFF1FAEE);
+        final muted = _palette?.mutedColor?.color ?? const Color(0xFFA8DADC);
+        
+        // Create multi-stop gradient for rich background
         final bgGradient = LinearGradient(
-          colors: [primary, secondary],
+          colors: [
+            darkVibrant,
+            vibrant,
+            muted,
+          ],
+          stops: const [0.0, 0.5, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
 
-        final onPrimary = ThemeData.estimateBrightnessForColor(primary) == Brightness.dark ? Colors.white : Colors.black87;
+        final onPrimary = ThemeData.estimateBrightnessForColor(darkVibrant) == Brightness.dark ? Colors.white : Colors.black87;
         final media = MediaQuery.of(context);
         final double logoSize = (media.size.width * 0.75).clamp(240.0, 380.0).toDouble();
 
@@ -84,26 +95,71 @@ class _AboutScreenState extends State<AboutScreen> {
               children: [
               const SizedBox(height: 4),
               Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'images/bitrift-logo.png',
-                    width: logoSize,
-                    height: logoSize,
-                    fit: BoxFit.contain,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'images/bitrift-logo.png',
+                      width: logoSize,
+                      height: logoSize,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 6),
-                Center(child: Text(info.appName, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: onPrimary))),
+                Center(
+                  child: Text(
+                    info.appName,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: onPrimary,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.3),
+                          offset: const Offset(0, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 Center(
                   child: Text(
                     version,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: onPrimary.withOpacity(0.9)),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: onPrimary.withOpacity(0.95),
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.2),
+                          offset: const Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                _FrostedCard(
+                _GlassCard(
+                  gradient: LinearGradient(
+                    colors: [
+                      lightVibrant.withOpacity(0.3),
+                      Colors.white.withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 child: Column(
                   children: [
                       const ListTile(
@@ -126,7 +182,15 @@ class _AboutScreenState extends State<AboutScreen> {
                 ),
                 ),
                 const SizedBox(height: 12),
-                _FrostedCard(
+                _GlassCard(
+                  gradient: LinearGradient(
+                    colors: [
+                      vibrant.withOpacity(0.25),
+                      muted.withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   child: Column(
                     children: [
                       ListTile(
@@ -153,7 +217,15 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _FrostedCard(
+                _GlassCard(
+                  gradient: LinearGradient(
+                    colors: [
+                      darkVibrant.withOpacity(0.25),
+                      lightVibrant.withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   child: Column(
                     children: [
                       ListTile(
@@ -184,7 +256,16 @@ class _AboutScreenState extends State<AboutScreen> {
                 Text(
                   'Thanks for using ${info.appName}! If you run into any issues, feel free to reach out.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: onPrimary.withOpacity(0.95)),
+                  style: TextStyle(
+                    color: onPrimary.withOpacity(0.95),
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.3),
+                        offset: const Offset(0, 1),
+                        blurRadius: 3,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -223,27 +304,52 @@ class TermsOfServiceScreen extends StatelessWidget {
   }
 }
 
-class _FrostedCard extends StatelessWidget {
-  const _FrostedCard({required this.child});
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child, required this.gradient});
   final Widget child;
+  final Gradient gradient;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(0.3),
+                  Colors.white.withOpacity(0.1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
+
 
 
