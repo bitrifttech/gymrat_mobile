@@ -29,101 +29,120 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
         : DateTime(widget.initialDate!.year, widget.initialDate!.month, widget.initialDate!.day);
   }
 
-  Future<void> _promptAdd(int foodId) async {
+  Future<void> _promptAdd(int foodId, {bool allowCustomSave = false}) async {
     final qtyController = TextEditingController(text: '1');
     final unitController = TextEditingController();
-    final result = await showDialog<(double qty, String? unit, String meal)>(
+    bool saveAsCustom = allowCustomSave;
+    final result = await showDialog<(double qty, String? unit, String meal, bool saveCustom)>(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Add to Meal'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<String>(
-                value: _mealType,
-                items: const [
-                  DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                ],
-                onChanged: (v) => setState(() => _mealType = v ?? 'breakfast'),
-              ),
-              TextField(
-                controller: qtyController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Quantity'),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Decrease',
-                    onPressed: () {
-                      final v = (double.tryParse(qtyController.text) ?? 0) - 1;
-                      qtyController.text = (v < 0 ? 0 : v).toStringAsFixed(2);
-                    },
-                    icon: const Icon(Icons.remove_circle_outline),
-                  ),
-                  IconButton(
-                    tooltip: 'Increase',
-                    onPressed: () {
-                      final v = (double.tryParse(qtyController.text) ?? 0) + 1;
-                      qtyController.text = v.toStringAsFixed(2);
-                    },
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add to Meal'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final frac in const [
-                      ('1/4', 0.25),
-                      ('1/3', 1.0/3.0),
-                      ('1/2', 0.5),
-                      ('2/3', 2.0/3.0),
-                      ('3/4', 0.75),
-                    ])
-                      ActionChip(
-                        label: Text(frac.$1),
-                        onPressed: () {
-                          qtyController.text = frac.$2.toStringAsFixed(2);
-                        },
+                    DropdownButton<String>(
+                      value: _mealType,
+                      items: const [
+                        DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                        DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                        DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                        DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                      ],
+                      onChanged: (v) => setState(() => _mealType = v ?? 'breakfast'),
+                    ),
+                    TextField(
+                      controller: qtyController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Quantity'),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Decrease',
+                          onPressed: () {
+                            final v = (double.tryParse(qtyController.text) ?? 0) - 1;
+                            qtyController.text = (v < 0 ? 0 : v).toStringAsFixed(2);
+                          },
+                          icon: const Icon(Icons.remove_circle_outline),
+                        ),
+                        IconButton(
+                          tooltip: 'Increase',
+                          onPressed: () {
+                            final v = (double.tryParse(qtyController.text) ?? 0) + 1;
+                            qtyController.text = v.toStringAsFixed(2);
+                          },
+                          icon: const Icon(Icons.add_circle_outline),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final frac in const [
+                            ('1/4', 0.25),
+                            ('1/3', 1.0/3.0),
+                            ('1/2', 0.5),
+                            ('2/3', 2.0/3.0),
+                            ('3/4', 0.75),
+                          ])
+                            ActionChip(
+                              label: Text(frac.$1),
+                              onPressed: () {
+                                qtyController.text = frac.$2.toStringAsFixed(2);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    TextField(
+                      controller: unitController,
+                      decoration: const InputDecoration(labelText: 'Unit (optional)'),
+                    ),
+                    if (allowCustomSave)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: saveAsCustom,
+                        title: const Text('Add to My Foods'),
+                        onChanged: (val) => setDialogState(() => saveAsCustom = val ?? false),
                       ),
                   ],
                 ),
               ),
-              TextField(
-                controller: unitController,
-                decoration: const InputDecoration(labelText: 'Unit (optional)'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final q = double.tryParse(qtyController.text) ?? 1.0;
-                final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
-                Navigator.of(ctx).pop((q, u, _mealType));
-              },
-              child: const Text('Add'),
-            ),
-          ],
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    final q = double.tryParse(qtyController.text) ?? 1.0;
+                    final u = unitController.text.trim().isEmpty ? null : unitController.text.trim();
+                    Navigator.of(ctx).pop((q, u, _mealType, saveAsCustom));
+                  },
+                  child: const Text('Add'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
     if (result == null) return;
-    final (qty, unit, meal) = result;
-    await ref.read(foodRepositoryProvider).addExistingFoodToMealOnDate(date: _date, foodId: foodId, mealType: meal, quantity: qty, unit: unit);
+    final (qty, unit, meal, saveCustom) = result;
+    final repo = ref.read(foodRepositoryProvider);
+    final targetFoodId = saveCustom ? await repo.ensureCustomFoodFromExisting(foodId) : foodId;
+    await repo.addExistingFoodToMealOnDate(date: _date, foodId: targetFoodId, mealType: meal, quantity: qty, unit: unit);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Food added')));
+    if (saveCustom) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to My Foods')));
+    }
     Navigator.of(context).pop();
   }
 
@@ -204,7 +223,9 @@ class _ScanFoodScreenState extends ConsumerState<ScanFoodScreen> {
       setState(() { _handled = false; _liveDetected = false; });
       return;
     }
-    await _promptAdd(id);
+    final food = await repo.getFoodById(id);
+    final allowCustomSave = food != null && !food.isCustom;
+    await _promptAdd(id, allowCustomSave: allowCustomSave);
   }
 
   @override

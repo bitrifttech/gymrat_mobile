@@ -103,6 +103,44 @@ class FoodRepository {
     ));
   }
 
+  Future<int> ensureCustomFoodFromExisting(int foodId) async {
+    final source = await (_db.select(_db.foods)..where((f) => f.id.equals(foodId))).getSingleOrNull();
+    if (source == null) {
+      throw StateError('Food $foodId not found');
+    }
+    if (source.isCustom) {
+      return source.id;
+    }
+
+    final existingQuery = _db.select(_db.foods)
+      ..where((f) => f.userId.equals(source.userId) & f.isCustom.equals(true));
+    if (source.barcode != null && source.barcode!.isNotEmpty) {
+      existingQuery.where((f) => f.barcode.equals(source.barcode!));
+    } else {
+      existingQuery.where((f) => f.name.equals(source.name));
+    }
+    final existing = await existingQuery.getSingleOrNull();
+    if (existing != null) {
+      return existing.id;
+    }
+
+    return _db.into(_db.foods).insert(FoodsCompanion.insert(
+      userId: source.userId,
+      name: source.name,
+      brand: Value(source.brand),
+      servingDesc: Value(source.servingDesc),
+      servingQty: Value(source.servingQty),
+      servingUnit: Value(source.servingUnit),
+      barcode: Value(source.barcode),
+      calories: Value(source.calories),
+      proteinG: Value(source.proteinG),
+      carbsG: Value(source.carbsG),
+      fatsG: Value(source.fatsG),
+      isCustom: const Value(true),
+      source: const Value('custom'),
+    ));
+  }
+
   Stream<List<Food>> watchCustomFoods() {
     final userIdFuture = _getCurrentUserId();
     return Stream.fromFuture(userIdFuture).asyncExpand((userId) {
