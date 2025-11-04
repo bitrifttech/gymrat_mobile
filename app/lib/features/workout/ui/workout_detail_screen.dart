@@ -7,9 +7,18 @@ import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:app/core/notifications.dart';
 
-class WorkoutDetailScreen extends ConsumerWidget {
+enum _ExitAction { cancel, discard, save }
+
+class WorkoutDetailScreen extends ConsumerStatefulWidget {
   const WorkoutDetailScreen({super.key, required this.workoutId});
   final int workoutId;
+
+  @override
+  ConsumerState<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
+}
+
+class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
+  final GlobalKey<_WorkoutDetailBodyState> _detailKey = GlobalKey<_WorkoutDetailBodyState>();
 
   String _formatElapsed(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
@@ -18,10 +27,46 @@ class WorkoutDetailScreen extends ConsumerWidget {
     return '$hours:$minutes:$secs';
   }
 
+  Future<_ExitAction?> _showExitDialog(BuildContext context) {
+    return showDialog<_ExitAction>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save workout progress?'),
+        content: const Text('You have an active workout. Would you like to save your progress before leaving?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_ExitAction.cancel),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_ExitAction.discard),
+            child: const Text("Don't Save"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(_ExitAction.save),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _confirmExit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    final choice = await _showExitDialog(context);
+    if (choice == null || choice == _ExitAction.cancel) {
+      return false;
+    }
+    if (choice == _ExitAction.save) {
+      await _detailKey.currentState?.saveAllEdits();
+    }
+    return true;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final repo = ref.read(workoutRepositoryProvider);
-    final detailKey = GlobalKey<_WorkoutDetailBodyState>();
+    final workoutId = widget.workoutId;
     return FutureBuilder(
       future: repo.getWorkoutById(workoutId),
       builder: (ctx, snap) {
@@ -32,90 +77,111 @@ class WorkoutDetailScreen extends ConsumerWidget {
         final started = w.startedAt;
         final finished = w.finishedAt;
         final elapsed = finished == null ? null : finished.difference(started);
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(w.name ?? 'Workout'),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(26),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: finished == null
-                    ? _ElapsedTicker(startedAt: started)
-                    : Text('Total time: ${_formatElapsed(elapsed!)}', style: Theme.of(context).textTheme.bodySmall),
+        return WillPopScope(
+          onWillPop: () async {
+            if (finished != null) {
+              return true;
+            }
+            return _confirmExit(ctx);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(w.name ?? 'Workout'),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(26),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: finished == null
+                      ? _ElapsedTicker(startedAt: started)
+                      : Text('Total time: ${_formatElapsed(elapsed!)}',
+                          style: Theme.of(context).textTheme.bodySmall),
+                ),
               ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.save),
+                  tooltip: 'Save changes',
+                  onPressed: () async {
+                    FocusScope.of(ctx).unfocus();
+                    await _detailKey.currentState?.saveAllEdits();
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Changes saved')),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.restart_alt),
+                  tooltip: 'Restart workout',
+                  onPressed: () async {
+                    final choice = await showDialog<bool>(
+                      context: ctx,
+                      builder: (dCtx) => AlertDialog(
+                        title: const Text('Restart workout?'),
+                        content: const Text('Keep previous values?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dCtx).pop(false),
+                            child: const Text('No (Clear)'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(dCtx).pop(true),
+                            child: const Text('Yes (Keep)'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (choice == null) return;
+                    int newId;
+                    if (choice) {
+                      newId = await repo.restartWorkoutFrom(workoutId);
+                      if (!ctx.mounted) return;
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Workout restarted (kept values)')),
+                      );
+                    } else {
+                      newId = await repo.resetWorkoutFrom(workoutId);
+                      if (!ctx.mounted) return;
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Workout reset (cleared values)')),
+                      );
+                    }
+                    if (!ctx.mounted) return;
+                    context.goNamed('workout.detail', pathParameters: {'id': newId.toString()});
+                  },
+                ),
+              ],
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.save),
-                tooltip: 'Save changes',
-                onPressed: () async {
-                  FocusScope.of(ctx).unfocus();
-                  await detailKey.currentState?.saveAllEdits();
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Changes saved')));
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.restart_alt),
-                tooltip: 'Restart workout',
-                onPressed: () async {
-                  final choice = await showDialog<bool>(
-                    context: ctx,
-                    builder: (dCtx) => AlertDialog(
-                      title: const Text('Restart workout?'),
-                      content: const Text('Keep previous values?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(dCtx).pop(false),
-                          child: const Text('No (Clear)')),
-                        TextButton(
-                          onPressed: () => Navigator.of(dCtx).pop(true),
-                          child: const Text('Yes (Keep)')),
-                      ],
-                    ),
-                  );
-                  if (choice == null) return;
-                  int newId;
-                  if (choice) {
-                    newId = await repo.restartWorkoutFrom(workoutId);
-                    if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout restarted (kept values)')));
-                  } else {
-                    newId = await repo.resetWorkoutFrom(workoutId);
-                    if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout reset (cleared values)')));
-                  }
-                  if (!ctx.mounted) return;
-                  context.goNamed('workout.detail', pathParameters: {'id': newId.toString()});
-                },
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Expanded(child: _WorkoutDetailBody(key: detailKey, workoutId: workoutId)),
-              if (finished == null)
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          FocusScope.of(ctx).unfocus();
-                          await detailKey.currentState?.saveAllEdits();
-                          await repo.finishWorkout(w.id);
-                          if (!ctx.mounted) return;
-                          context.push('/workout/summary/${w.id}');
-                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Workout saved and completed')));
-                        },
-                        icon: const Icon(Icons.check),
-                        label: const Text('Save & End Workout'),
+            body: Column(
+              children: [
+                Expanded(
+                  child: _WorkoutDetailBody(key: _detailKey, workoutId: workoutId),
+                ),
+                if (finished == null)
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            FocusScope.of(ctx).unfocus();
+                            await _detailKey.currentState?.saveAllEdits();
+                            await repo.finishWorkout(w.id);
+                            if (!ctx.mounted) return;
+                            context.push('/workout/summary/${w.id}');
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Workout saved and completed')),
+                            );
+                          },
+                          icon: const Icon(Icons.check),
+                          label: const Text('Save & End Workout'),
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },

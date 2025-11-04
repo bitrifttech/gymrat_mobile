@@ -8,6 +8,7 @@ import 'package:app/features/settings/ui/edit_settings_screen.dart';
 import 'package:app/features/settings/ui/about_screen.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'package:app/data/db/app_database.dart';
+import 'package:app/core/app_theme.dart';
 
 class BottomNavShell extends StatelessWidget {
   const BottomNavShell({super.key, required this.shell});
@@ -61,11 +62,15 @@ class _ConfigureScreenState extends State<ConfigureScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: GradientAppBar(
         title: const Text('Configure'),
+        gradient: AppBarGradients.all,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'Workouts', icon: Icon(Icons.article)),
             Tab(text: 'Foods', icon: Icon(Icons.restaurant)),

@@ -5,6 +5,7 @@ import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'dart:math' as math;
+import 'package:app/core/app_theme.dart';
 
 class MetricsScreen extends StatefulWidget {
   const MetricsScreen({super.key});
@@ -33,10 +34,14 @@ class _MetricsScreenState extends State<MetricsScreen> with SingleTickerProvider
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: GradientAppBar(
           title: const Text('Metrics'),
+          gradient: AppBarGradients.all,
           bottom: TabBar(
             controller: _tabController,
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
             tabs: const [
               Tab(text: 'Nutrition'),
               Tab(text: 'Workouts'),

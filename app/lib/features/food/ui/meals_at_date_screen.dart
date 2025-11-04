@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
+import 'package:app/core/app_theme.dart';
 
 class MealsAtDateScreen extends ConsumerWidget {
   const MealsAtDateScreen({super.key, required this.date});
@@ -21,7 +22,10 @@ class MealsAtDateScreen extends ConsumerWidget {
     final meals = ref.watch(mealsForDateProvider(date));
     final totals = ref.watch(totalsForDateProvider(date));
     return Scaffold(
-      appBar: AppBar(title: Text('${date.month}/${date.day}/${date.year}')),
+      appBar: GradientAppBar(
+        title: Text('${date.month}/${date.day}/${date.year}'),
+        gradient: AppBarGradients.all,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           // Reuse FoodLog to add for today; editing by arbitrary date is handled via repository method where needed

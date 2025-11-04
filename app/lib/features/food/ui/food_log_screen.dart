@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/food/data/food_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:app/core/app_theme.dart';
 
 class FoodLogScreen extends ConsumerStatefulWidget {
   const FoodLogScreen({super.key, this.date});
@@ -243,8 +244,9 @@ class _FoodLogScreenState extends ConsumerState<FoodLogScreen> {
     final perMealTotals = ref.watch(perMealTotalsForDateProvider(_date));
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GradientAppBar(
         title: Text('Log Food — ${_date.month}/${_date.day}/${_date.year}'),
+        gradient: AppBarGradients.all,
       ),
       body: Column(
         children: [

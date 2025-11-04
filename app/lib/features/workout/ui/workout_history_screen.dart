@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:app/core/app_theme.dart';
 
 class WorkoutHistoryScreen extends ConsumerWidget {
   const WorkoutHistoryScreen({super.key});
@@ -10,7 +11,10 @@ class WorkoutHistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(workoutHistoryProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Workout History')),
+      appBar: const GradientAppBar(
+        title: Text('Workout History'),
+        gradient: AppBarGradients.all,
+      ),
       body: history.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
