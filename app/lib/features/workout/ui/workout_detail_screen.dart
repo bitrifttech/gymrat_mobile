@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';
 import 'package:app/core/notifications.dart';
 
 enum _ExitAction { cancel, discard, save }
@@ -421,7 +420,12 @@ class _RestButton extends StatefulWidget {
 class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
   Timer? _ticker;
   DateTime? _endAt;
-  bool _notifiedDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
@@ -431,41 +435,28 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
   }
 
   void _start() {
-    WidgetsBinding.instance.addObserver(this);
     _ticker?.cancel();
+    final endAt = DateTime.now().add(Duration(seconds: widget.restSeconds));
     setState(() {
-      _endAt = DateTime.now().add(Duration(seconds: widget.restSeconds));
-      _notifiedDone = false;
+      _endAt = endAt;
     });
     // Schedule a background notification for when the rest ends
-    if (_endAt != null) {
-      Notifications.scheduleRestCompleteAt(_endAt!);
-    }
+    Notifications.scheduleRestCompleteAt(endAt);
     _ticker = Timer.periodic(const Duration(seconds: 1), (t) async {
       if (!mounted) return;
       final remaining = _computeRemainingSeconds();
       if (remaining <= 0) {
         t.cancel();
-        if (!_notifiedDone) {
-          _notifiedDone = true;
-          final hasVib = await Vibration.hasVibrator();
-          if (hasVib == true) {
-            Vibration.vibrate(duration: 500);
-          } else {
-            HapticFeedback.mediumImpact();
-          }
-          await Notifications.showRestComplete();
-          // Clear any scheduled notification if we're in foreground
-          await Notifications.cancelScheduledRest();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rest complete')));
-          }
-        }
+        _ticker = null;
+        await Notifications.cancelScheduledRest();
+        if (!mounted) return;
         setState(() {
           _endAt = null;
         });
       } else {
-        setState(() {});
+        setState(() {
+          // Force rebuild to update countdown display.
+        });
       }
     });
   }
@@ -474,6 +465,7 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
     final active = _endAt != null && _computeRemainingSeconds() > 0;
     if (active) {
       _ticker?.cancel();
+      _ticker = null;
       setState(() {
         _endAt = null;
       });
@@ -493,8 +485,16 @@ class _RestButtonState extends State<_RestButton> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
     if (state == AppLifecycleState.resumed) {
-      // Force a rebuild to update remaining based on end time after resume
-      setState(() {});
+      if (_endAt != null && _computeRemainingSeconds() <= 0) {
+        _ticker?.cancel();
+        _ticker = null;
+        Notifications.cancelScheduledRest();
+        setState(() {
+          _endAt = null;
+        });
+      } else {
+        setState(() {});
+      }
     }
   }
 
