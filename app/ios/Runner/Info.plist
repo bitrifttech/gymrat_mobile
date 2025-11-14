@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required to scan barcodes for food logging.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access lets you upload progress photos and food images.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
