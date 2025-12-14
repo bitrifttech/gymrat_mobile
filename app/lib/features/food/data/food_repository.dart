@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import 'package:app/core/db_provider.dart';
+import 'package:app/core/day_change_notifier.dart';
 import 'package:app/data/db/app_database.dart';
 import 'package:dio/dio.dart';
 
@@ -971,6 +972,7 @@ final foodRepositoryProvider = Provider<FoodRepository>((ref) {
 });
 
 final todayTotalsProvider = StreamProvider<MacroTotals>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(foodRepositoryProvider).watchTodayTotals();
 });
 
@@ -979,12 +981,14 @@ final recentFoodsProvider = FutureProvider.autoDispose<List<Food>>((ref) async {
 });
 
 final todayPerMealTotalsProvider = StreamProvider<List<MealTotals>>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(foodRepositoryProvider).watchTodayPerMealTotals();
 });
 
 final todaysMealsProvider = StreamProvider.autoDispose<List<(Meal, List<(MealItem, Food)>)>>((ref) {
+  final today = ref.watch(currentDateProvider);
   final repo = ref.read(foodRepositoryProvider);
-  return repo.watchMealsForDay(DateTime.now());
+  return repo.watchMealsForDay(today);
 });
 
 final offSearchResultsProvider = FutureProvider.autoDispose.family<List<Food>, String>((ref, query) async {

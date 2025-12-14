@@ -7,6 +7,7 @@ import 'package:app/features/workout/data/workout_repository.dart';
 import 'package:app/features/tasks/data/tasks_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/router/route_observer.dart';
+import 'package:app/core/day_change_notifier.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +17,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
+  DateTime? _lastKnownDate;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -44,9 +47,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   Widget build(BuildContext context) {
     final ref = this.ref;
     final latestGoal = ref.watch(latestGoalProvider);
-    final now = DateTime.now();
+    final currentDate = ref.watch(currentDateProvider);
+    
+    // Reset to today when day changes
+    if (_lastKnownDate != null && _lastKnownDate != currentDate) {
+      final selectedDateState = ref.read(_selectedDateProvider);
+      if (selectedDateState != null && selectedDateState.isBefore(currentDate)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(_selectedDateProvider.notifier).state = null;
+        });
+      }
+    }
+    _lastKnownDate = currentDate;
+    
     final selectedDateState = ref.watch(_selectedDateProvider);
-    final selectedDate = selectedDateState ?? DateTime(now.year, now.month, now.day);
+    final selectedDate = selectedDateState ?? currentDate;
     // Show totals for the selected date
     final totalsForSelected = ref.watch(totalsForDateProvider(selectedDate));
     // Date-scoped workout/task providers
@@ -60,8 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     final prevWorkout = ref.watch(workoutAnyOnDateProvider(prevDate));
     final prevHasEntries = (prevMeals.maybeWhen(data: (list) => list.isNotEmpty, orElse: () => false))
         || (prevWorkout.maybeWhen(data: (w) => w != null, orElse: () => false));
-    final todayDateOnly = DateTime(now.year, now.month, now.day);
-    final canGoNext = selectedDate.isBefore(todayDateOnly);
+    final canGoNext = selectedDate.isBefore(currentDate);
 
     return Scaffold(
       appBar: AppBar(
@@ -94,10 +108,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         ),
         actions: [
           TextButton(
-            onPressed: selectedDate.isAtSameMomentAs(todayDateOnly)
+            onPressed: selectedDate.isAtSameMomentAs(currentDate)
                 ? null
                 : () {
-                    ref.read(_selectedDateProvider.notifier).state = todayDateOnly;
+                    ref.read(_selectedDateProvider.notifier).state = currentDate;
                   },
             child: const Text('Today'),
           ),
@@ -236,7 +250,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                 loading: () => const SizedBox.shrink(),
                 error: (e, st) => const SizedBox.shrink(),
                 data: (completed) {
-                  if (selectedDate.isAtSameMomentAs(DateTime(now.year, now.month, now.day)) && completed) {
+                  if (selectedDate.isAtSameMomentAs(currentDate) && completed) {
                     return todaysWorkoutAny.when(
                       loading: () => const SizedBox.shrink(),
                       error: (e, st) => const SizedBox.shrink(),
@@ -339,7 +353,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                             leading: const Icon(Icons.fitness_center),
                             title: Text('Scheduled Workout: ${tpl.name}'),
                             trailing: ElevatedButton(
-                              onPressed: selectedDate.isAtSameMomentAs(DateTime(now.year, now.month, now.day))
+                              onPressed: selectedDate.isAtSameMomentAs(currentDate)
                                   ? () async {
                                       final wkId = await ref.read(workoutRepositoryProvider).startOrResumeTodaysScheduledWorkout();
                                       if (!context.mounted) return;
