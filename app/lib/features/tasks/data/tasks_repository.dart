@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import 'package:app/core/db_provider.dart';
+import 'package:app/core/day_change_notifier.dart';
 import 'package:app/data/db/app_database.dart';
 
 class TasksRepository {
@@ -191,6 +192,7 @@ final tasksForDayProvider = StreamProvider.family<List<Task>, int>((ref, day) {
 });
 
 final tasksForTodayProvider = StreamProvider<List<Task>>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(tasksRepositoryProvider).watchTasksForToday();
 });
 
@@ -199,7 +201,8 @@ final taskAssignmentsProvider = StreamProvider<Map<int, Set<int>>>((ref) {
 });
 
 final completedTodayProvider = StreamProvider<Set<int>>((ref) {
-  return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForDate(DateTime.now());
+  final today = ref.watch(currentDateProvider);
+  return ref.read(tasksRepositoryProvider).watchCompletedTaskIdsForDate(today);
 });
 
 final completedOnDateProvider = StreamProvider.family<Set<int>, DateTime>((ref, date) {

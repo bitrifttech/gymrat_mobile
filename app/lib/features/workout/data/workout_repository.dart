@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import 'package:app/core/db_provider.dart';
+import 'package:app/core/day_change_notifier.dart';
 import 'package:app/data/db/app_database.dart';
 
 class WeeklyVolume {
@@ -885,6 +886,7 @@ final templateExercisesProvider = StreamProvider.family<List<TemplateExercise>, 
 });
 
 final scheduledTemplateTodayProvider = StreamProvider<WorkoutTemplate?>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(workoutRepositoryProvider).watchScheduledTemplateForDate(DateTime.now());
 });
 
@@ -901,10 +903,12 @@ final workoutTemplateTargetsProvider = FutureProvider.family<Map<String, Templat
 });
 
 final todaysScheduledWorkoutCompletedProvider = StreamProvider<bool>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(workoutRepositoryProvider).watchIsTodaysScheduledWorkoutCompleted();
 });
 
 final todaysWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(workoutRepositoryProvider).watchTodaysWorkoutAnyStatus();
 });
 
@@ -913,6 +917,7 @@ final workoutAnyOnDateProvider = StreamProvider.family<Workout?, DateTime>((ref,
 });
 
 final todaysScheduledWorkoutAnyProvider = StreamProvider<Workout?>((ref) {
+  ref.watch(currentDateProvider);
   return ref.read(workoutRepositoryProvider).watchTodaysScheduledWorkoutAnyStatus();
 });
 
